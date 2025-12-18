@@ -1,0 +1,588 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ai-primary: #3b82f6;
+  --ai-secondary: #8b5cf6;
+  --ai-accent: #06b6d4;
+  --bg-dark: #020617;
+  --cv-success: #10b981;
+  --cv-warning: #f59e0b;
+  --cv-error: #ef4444;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-white min-h-screen antialiased overflow-x-hidden;
+    background-color: var(--bg-dark);
+  }
+
+  /* Smooth scroll behavior */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-600;
+  }
+}
+
+@layer components {
+  /* Existing components */
+  .live-bg {
+    @apply fixed inset-0 -z-30 overflow-hidden pointer-events-none;
+    filter: blur(80px);
+  }
+
+  .orb {
+    @apply absolute rounded-full opacity-20 mix-blend-screen;
+    filter: blur(40px);
+  }
+
+  .orb-1 { @apply bg-ai-primary w-[500px] h-[500px]; top: -10%; left: -10%; animation: move-1 25s infinite alternate ease-in-out; }
+  .orb-2 { @apply bg-ai-secondary w-[600px] h-[600px]; bottom: -15%; right: -5%; animation: move-2 30s infinite alternate ease-in-out; }
+  .orb-3 { @apply bg-ai-accent w-[400px] h-[400px]; top: 30%; left: 50%; animation: move-3 20s infinite alternate ease-in-out; }
+
+  .glass-card {
+    @apply bg-slate-900/40 backdrop-blur-2xl border border-white/10 shadow-[0_0_25px_rgba(0,0,0,0.3)];
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .glass-card:hover {
+    @apply border-ai-primary/30 bg-slate-900/60 shadow-[0_0_40px_rgba(59,130,246,0.2)];
+  }
+
+  .ai-border-glow {
+    position: relative;
+    border-radius: 2.5rem;
+    background: linear-gradient(var(--bg-dark), var(--bg-dark)) padding-box,
+                linear-gradient(var(--angle), var(--ai-primary), var(--ai-secondary)) border-box;
+    border: 1px solid transparent;
+    animation: rotate-gradient 6s linear infinite;
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 3s infinite;
+  }
+
+  /* New components for CV Generator */
+  .cv-step-enter {
+    @apply opacity-0 transform -translate-y-4;
+  }
+
+  .cv-step-enter-active {
+    @apply opacity-100 transform translate-y-0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .cv-form-input {
+    @apply w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-white/30 
+           focus:outline-none focus:ring-2 focus:ring-ai-primary/50 focus:border-ai-primary 
+           transition-all duration-200 ease-in-out;
+  }
+
+  .cv-form-input:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .cv-form-label {
+    @apply block text-sm font-medium text-white/80 mb-2;
+  }
+
+  .cv-form-section {
+    @apply bg-black/30 p-6 rounded-2xl border border-white/10 transition-all duration-300;
+  }
+
+  .cv-form-section:hover {
+    @apply border-white/20 bg-black/40;
+  }
+
+  .cv-skill-tag {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 
+           hover:scale-105 active:scale-95 cursor-pointer;
+  }
+
+  .cv-skill-technical {
+    @apply bg-gradient-to-r from-ai-primary/20 to-blue-500/20 border-ai-primary/30 text-white;
+  }
+
+  .cv-skill-soft {
+    @apply bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/30 text-white;
+  }
+
+  .cv-skill-tools {
+    @apply bg-gradient-to-r from-purple-500/20 to-pink-500/20 border-purple-500/30 text-white;
+  }
+
+  .cv-button-primary {
+    @apply px-6 py-3 bg-gradient-to-r from-ai-primary to-purple-600 hover:from-ai-primary/90 hover:to-purple-600/90 
+           text-white rounded-xl font-semibold transition-all duration-200 active:scale-95 
+           disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
+  }
+
+  .cv-button-secondary {
+    @apply px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-semibold 
+           transition-all duration-200 active:scale-95;
+  }
+
+  .cv-button-outline {
+    @apply px-6 py-3 border-2 border-dashed border-white/20 hover:border-white/40 
+           text-white/60 hover:text-white rounded-2xl transition-all duration-200 
+           flex items-center justify-center gap-2;
+  }
+
+  .cv-style-card {
+    @apply p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer text-center
+           hover:border-ai-primary hover:bg-ai-primary/5 active:scale-95;
+  }
+
+  .cv-style-card-active {
+    @apply border-ai-primary bg-ai-primary/10;
+  }
+
+  .cv-industry-option {
+    @apply flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200
+           hover:bg-white/5 active:scale-95;
+  }
+
+  .cv-industry-option-active {
+    @apply bg-white/10 border border-white/20;
+  }
+
+  .cv-preview-container {
+    @apply bg-white rounded-2xl shadow-2xl overflow-hidden border border-white/20;
+  }
+
+  .cv-loading-spinner {
+    @apply w-8 h-8 border-2 border-ai-primary border-t-transparent rounded-full animate-spin;
+  }
+
+  .cv-success-badge {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium
+           bg-green-500/20 text-green-400 border border-green-500/30;
+  }
+
+  .cv-warning-badge {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium
+           bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+  }
+
+  .cv-error-badge {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium
+           bg-red-500/20 text-red-400 border border-red-500/30;
+  }
+
+  .cv-tooltip {
+    @apply absolute z-50 px-3 py-2 text-sm rounded-lg bg-slate-900 border border-white/10
+           shadow-2xl opacity-0 pointer-events-none transition-opacity duration-200;
+  }
+
+  .cv-tooltip:hover {
+    @apply opacity-100 pointer-events-auto;
+  }
+
+  .cv-gradient-text {
+    @apply bg-gradient-to-r from-ai-primary via-ai-secondary to-ai-accent bg-clip-text text-transparent;
+  }
+
+  .cv-pulse-animation {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Progress indicator */
+  .cv-progress-dot {
+    @apply w-3 h-3 rounded-full bg-white/20 transition-all duration-300;
+  }
+
+  .cv-progress-dot-active {
+    @apply bg-ai-primary scale-125;
+  }
+
+  .cv-progress-dot-completed {
+    @apply bg-green-500;
+  }
+
+  /* Form validation */
+  .cv-form-error {
+    @apply text-red-400 text-sm mt-2 flex items-center gap-2;
+  }
+
+  .cv-form-success {
+    @apply text-green-400 text-sm mt-2 flex items-center gap-2;
+  }
+
+  /* Responsive grid layouts */
+  .cv-grid-responsive {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-6;
+  }
+
+  .cv-grid-tight {
+    @apply grid grid-cols-1 sm:grid-cols-2 gap-4;
+  }
+
+  /* Print styles for CV */
+  .cv-print-optimized {
+    @apply print:shadow-none print:border-0 print:bg-white print:text-black;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes rotate-gradient { 
+  to { 
+    --angle: 360deg; 
+  } 
+}
+
+@keyframes move-1 { 
+  from { 
+    transform: translate(0,0); 
+  } 
+  to { 
+    transform: translate(100px, 150px); 
+  } 
+}
+
+@keyframes move-2 { 
+  from { 
+    transform: translate(0,0); 
+  } 
+  to { 
+    transform: translate(-150px, -50px); 
+  } 
+}
+
+@keyframes move-3 { 
+  from { 
+    transform: translate(0,0); 
+  } 
+  to { 
+    transform: translate(-100px, 100px); 
+  } 
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* New animations for CV Generator */
+@keyframes checkmark {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes progress-fill {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink-caret {
+  from, to {
+    border-color: transparent;
+  }
+  50% {
+    border-color: var(--ai-primary);
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  .animate-slideIn {
+    animation: slideIn 0.3s ease-out forwards;
+  }
+
+  .animate-pulse-subtle {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .animate-bounce-subtle {
+    animation: bounce-subtle 1s ease-in-out infinite;
+  }
+
+  .animate-checkmark {
+    animation: checkmark 0.3s ease-out forwards;
+  }
+
+  .animate-progress {
+    animation: progress-fill 1.5s ease-out forwards;
+  }
+
+  .animate-typing {
+    animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+  }
+
+  /* Text gradients */
+  .text-gradient-primary {
+    @apply bg-gradient-to-r from-ai-primary to-ai-secondary bg-clip-text text-transparent;
+  }
+
+  .text-gradient-accent {
+    @apply bg-gradient-to-r from-ai-accent to-green-400 bg-clip-text text-transparent;
+  }
+
+  /* Background gradients */
+  .bg-gradient-radial {
+    background-image: radial-gradient(circle at center, var(--ai-primary) 0%, transparent 70%);
+  }
+
+  .bg-gradient-diagonal {
+    background: linear-gradient(135deg, var(--ai-primary) 0%, var(--ai-secondary) 100%);
+  }
+
+  /* Glass morphism variations */
+  .glass-light {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+
+  .glass-dark {
+    @apply bg-black/40 backdrop-blur-2xl border border-white/5;
+  }
+
+  .glass-primary {
+    @apply bg-ai-primary/10 backdrop-blur-xl border border-ai-primary/20;
+  }
+
+  /* Shadow variations */
+  .shadow-glow {
+    box-shadow: 0 0 50px rgba(59, 130, 246, 0.3);
+  }
+
+  .shadow-glow-secondary {
+    box-shadow: 0 0 50px rgba(139, 92, 246, 0.3);
+  }
+
+  .shadow-inner-glow {
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.1);
+  }
+
+  /* Border animations */
+  .border-animate {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .border-animate::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, var(--ai-primary), var(--ai-secondary), var(--ai-accent), var(--ai-primary));
+    background-size: 400% 400%;
+    animation: rotate-gradient 3s linear infinite;
+    z-index: -1;
+    border-radius: inherit;
+  }
+
+  .border-animate::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--bg-dark);
+    border-radius: inherit;
+    z-index: -1;
+  }
+
+  /* Custom transitions */
+  .transition-all-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-transform-smooth {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .transition-opacity-smooth {
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Custom scrollbar for specific elements */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-slate-800/50;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-slate-600 rounded-full;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Typography utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* Print utilities */
+  .print-only {
+    display: none;
+  }
+
+  @media print {
+    .print-only {
+      display: block;
+    }
+    
+    .no-print {
+      display: none !important;
+    }
+  }
+}
+
+/* Print optimization for CV */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt !important;
+  }
+
+  .cv-print-optimized * {
+    color: black !important;
+    background: white !important;
+    border-color: #ddd !important;
+    box-shadow: none !important;
+  }
+
+  a {
+    color: black !important;
+    text-decoration: underline !important;
+  }
+
+  .break-before {
+    page-break-before: always;
+  }
+
+  .break-after {
+    page-break-after: always;
+  }
+
+  .break-inside-avoid {
+    page-break-inside: avoid;
+  }
+}
+
+/* Dark mode adjustments (if needed) */
+@media (prefers-color-scheme: dark) {
+  .dark-adjust {
+    filter: brightness(0.95);
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
