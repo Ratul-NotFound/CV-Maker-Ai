@@ -2,26 +2,78 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Crown, Zap, Sparkles, Loader2, ShieldCheck } from 'lucide-react';
-import { upgradeUserToPro } from '@/lib/firestore';
+import { X, Check, Crown, Zap, Sparkles, Loader2, ShieldCheck, CreditCard, ArrowLeft, Copy } from 'lucide-react';
+import { submitUpgradeRequest } from '@/lib/firestore';
 
 export default function PricingModal({ onClose, currentUser }) {
+  const [step, setStep] = useState(1); // 1: Select plan, 2: Payment instructions, 3: Enter transaction
+  const [transactionId, setTransactionId] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('bikash');
+  const [copied, setCopied] = useState(false);
 
-  const handleUpgrade = async () => {
-    if (!currentUser?.uid) return;
+  const paymentMethods = {
+    bikash: {
+      name: 'Bikash',
+      number: '01784090278',
+      instructions: 'Send 50 BDT to this personal number',
+      type: 'Personal',
+      accountName: 'MD. HASAN RATUL'
+    },
+    nagad: {
+      name: 'Nagad',
+      number: '01784090278',
+      instructions: 'Send 50 BDT to this personal number',
+      type: 'Personal',
+      accountName: 'MD. HASAN RATUL'
+    },
+    rocket: {
+      name: 'Rocket',
+      number: '01784090278',
+      instructions: 'Send 50 BDT to this personal number',
+      type: 'Personal',
+      accountName: 'MD. HASAN RATUL'
+    }
+  };
+
+  const currentMethod = paymentMethods[paymentMethod];
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSubmitTransaction = async () => {
+    if (!transactionId.trim()) {
+      alert('Please enter transaction ID');
+      return;
+    }
+
+    if (transactionId.length < 8) {
+      alert('Transaction ID seems too short. Please check and try again.');
+      return;
+    }
+
     setProcessing(true);
-    
     try {
-      // Simulation for payment gateway delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await upgradeUserToPro(currentUser.uid);
-      
-      // Real-time listener in AuthProvider will handle the state update automatically
-      onClose();
+      const requestId = await submitUpgradeRequest({
+        userId: currentUser?.uid,
+        userEmail: currentUser?.email,
+        userName: currentUser?.displayName || 'User',
+        transactionId: transactionId.trim(),
+        paymentMethod,
+        amount: 50,
+        paymentNumber: currentMethod.number
+      });
+
+      if (requestId) {
+        alert('✅ Upgrade request submitted successfully!\n\nAdmin will verify your payment within 24 hours. You will receive an email notification when your account is upgraded.');
+        onClose();
+      }
     } catch (error) {
-      console.error('Upgrade error:', error);
-      alert('Failed to process upgrade. Please try again.');
+      console.error('Error:', error);
+      alert('❌ Failed to submit request. Please try again.');
     } finally {
       setProcessing(false);
     }
@@ -29,7 +81,7 @@ export default function PricingModal({ onClose, currentUser }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop blur with deep overlay */}
+      {/* Backdrop */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -42,132 +94,272 @@ export default function PricingModal({ onClose, currentUser }) {
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
       >
-        {/* Main Container with AI Glow Border */}
-        <div className="ai-border-glow p-[1px] rounded-[2.5rem] overflow-hidden shadow-2xl">
-          <div className="bg-slate-950/90 backdrop-blur-2xl rounded-[2.45rem] overflow-hidden border border-white/5">
+        <div className="ai-border-glow p-[1px] rounded-2xl overflow-hidden shadow-2xl">
+          <div className="bg-slate-950/90 backdrop-blur-2xl rounded-2xl overflow-hidden border border-white/5">
             
             {/* Close Button */}
             <button 
               onClick={onClose}
-              className="absolute top-6 right-6 p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all z-20"
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-all z-20"
             >
               <X size={20} />
             </button>
 
-            {/* Header Section */}
-            <div className="relative p-10 text-center border-b border-white/5">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-40 bg-ai-primary/10 blur-[60px] pointer-events-none" />
-              <motion.div
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 4, repeat: Infinity }}
-                className="inline-block mb-4"
-              >
-                <Crown size={48} className="text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
-              </motion.div>
-              <h2 className="text-4xl font-black text-white mb-2 tracking-tight">Unlock Pro Intelligence</h2>
-              <p className="text-slate-400 font-light max-w-md mx-auto">Elevate your career with unlimited AI generations and premium ATS-optimized templates.</p>
-            </div>
-
-            {/* Pricing Cards Grid */}
-            <div className="p-8 md:p-10 grid md:grid-cols-2 gap-8">
-              
-              {/* Free Plan (Current) */}
-              <div className="glass-card p-8 rounded-[2rem] border-white/5 flex flex-col opacity-60 grayscale-[0.5]">
-                <div className="mb-6">
-                  <h3 className="text-slate-400 font-bold uppercase tracking-[0.2em] text-xs mb-1">Standard</h3>
-                  <div className="text-3xl font-black text-white">$0</div>
+            {/* STEP 1: Select Plan */}
+            {step === 1 && (
+              <div className="p-8">
+                <div className="text-center mb-8">
+                  <motion.div
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{ duration: 4, repeat: Infinity }}
+                    className="inline-block mb-4"
+                  >
+                    <Crown size={48} className="text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+                  </motion.div>
+                  <h2 className="text-2xl font-bold text-white mb-2">Upgrade to Pro</h2>
+                  <p className="text-slate-400">Get unlimited AI CV generations with premium features</p>
                 </div>
-                <ul className="space-y-4 flex-grow mb-8 text-sm">
-                  <Feature text="10 CV Credits" active />
-                  <Feature text="Basic AI Logic" active />
-                  <Feature text="Standard Styles" active />
-                  <Feature text="No Priority Support" active={false} />
-                </ul>
-                <div className="text-center py-3 rounded-xl border border-white/10 text-slate-500 font-bold text-xs uppercase tracking-widest">
-                  Current Engine
-                </div>
-              </div>
 
-              {/* Pro Plan */}
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-ai-primary to-ai-secondary rounded-[2.1rem] blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-                <div className="relative bg-slate-900/60 p-8 rounded-[2rem] border border-ai-primary/20 flex flex-col h-full shadow-xl">
-                  <div className="absolute -top-3 right-8 px-4 py-1 bg-ai-primary text-white text-[10px] font-black uppercase tracking-tighter rounded-full shadow-lg shadow-ai-primary/20">
-                    Recommended
-                  </div>
-                  
-                  <div className="mb-6">
-                    <h3 className="text-ai-primary font-bold uppercase tracking-[0.2em] text-xs mb-1">Elite Access</h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-black text-white">$9.99</span>
-                      <span className="text-slate-500 text-sm">/ month</span>
+                <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 p-6 rounded-xl mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <span className="text-white text-xl font-bold">Pro Plan</span>
+                      <div className="text-sm text-slate-300 mt-1">Lifetime Access</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-white">50 BDT</div>
+                      <div className="text-sm text-slate-300">One-time payment</div>
                     </div>
                   </div>
-
-                  <ul className="space-y-4 flex-grow mb-8 text-sm">
-                    <Feature text="Unlimited AI Generations" active pro />
-                    <Feature text="Gemini Pro 1.5 Analysis" active pro />
-                    <Feature text="Premium Creative Styles" active pro />
-                    <Feature text="High-Res PDF & Word Export" active pro />
-                    <Feature text="24/7 Priority Support" active pro />
+                  
+                  <ul className="space-y-3 mb-6">
+                    <li className="flex items-center gap-3 text-white">
+                      <Check className="w-5 h-5 text-green-400" />
+                      <span>Unlimited CV Generations</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-white">
+                      <Check className="w-5 h-5 text-green-400" />
+                      <span>All Template Architectures</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-white">
+                      <Check className="w-5 h-5 text-green-400" />
+                      <span>Industry-Specific Designs</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-white">
+                      <Check className="w-5 h-5 text-green-400" />
+                      <span>High-Quality PDF Export</span>
+                    </li>
+                    <li className="flex items-center gap-3 text-white">
+                      <Check className="w-5 h-5 text-green-400" />
+                      <span>Priority Support</span>
+                    </li>
                   </ul>
 
                   <button
-                    onClick={handleUpgrade}
-                    disabled={processing}
-                    className="group relative w-full overflow-hidden bg-white text-slate-950 font-black py-4 px-6 rounded-2xl transition-all hover:bg-ai-primary hover:text-white flex items-center justify-center space-x-3 shadow-xl disabled:opacity-50"
+                    onClick={() => setStep(2)}
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold py-3 rounded-lg hover:opacity-90 transition-all flex items-center justify-center gap-2"
                   >
-                    <div className="absolute inset-0 shimmer opacity-0 group-hover:opacity-20 transition-opacity" />
+                    <CreditCard size={20} />
+                    Continue to Payment
+                  </button>
+                </div>
+
+                <div className="text-center text-slate-400 text-sm">
+                  <p>✅ 100% Satisfaction Guarantee</p>
+                  <p className="mt-1">🔒 Secure Payment • Instant Access</p>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: Payment Method */}
+            {step === 2 && (
+              <div className="p-8">
+                <button 
+                  onClick={() => setStep(1)}
+                  className="flex items-center gap-2 text-slate-400 hover:text-white mb-6"
+                >
+                  <ArrowLeft size={16} />
+                  Back
+                </button>
+
+                <div className="text-center mb-6">
+                  <CreditCard className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+                  <h2 className="text-2xl font-bold text-white mb-2">Payment Method</h2>
+                  <p className="text-slate-400">Choose your preferred payment method</p>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                  {Object.entries(paymentMethods).map(([key, method]) => (
+                    <div
+                      key={key}
+                      onClick={() => setPaymentMethod(key)}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        paymentMethod === key 
+                          ? 'border-blue-500 bg-blue-900/20' 
+                          : 'border-white/10 bg-white/5 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            paymentMethod === key ? 'bg-blue-500' : 'bg-white/10'
+                          }`}>
+                            <CreditCard className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-white font-bold">{method.name}</h3>
+                            <p className="text-slate-300 text-sm">{method.instructions}</p>
+                          </div>
+                        </div>
+                        {paymentMethod === key && (
+                          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                            <Check className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {paymentMethod && (
+                  <div className="mb-6 p-4 bg-black/30 rounded-lg">
+                    <h3 className="text-white font-bold mb-3">Payment Details:</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-slate-400 text-sm">Send to:</label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <code className="bg-black/50 px-3 py-2 rounded text-lg font-mono text-white flex-1">
+                            {currentMethod.number}
+                          </code>
+                          <button
+                            onClick={() => copyToClipboard(currentMethod.number)}
+                            className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-all"
+                            title="Copy to clipboard"
+                          >
+                            {copied ? <Check size={18} className="text-white" /> : <Copy size={18} className="text-white" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-slate-400 text-sm">Account Type:</label>
+                        <div className="text-white">{currentMethod.type}</div>
+                      </div>
+                      <div>
+                        <label className="text-slate-400 text-sm">Account Name:</label>
+                        <div className="text-white">{currentMethod.accountName}</div>
+                      </div>
+                      <div>
+                        <label className="text-slate-400 text-sm">Amount:</label>
+                        <div className="text-white font-bold">50 BDT</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-lg p-4 mb-6">
+                  <p className="text-yellow-200 text-sm">
+                    ⚠️ Important: Save the transaction ID after payment. You'll need it in the next step.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setStep(3)}
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold py-3 rounded-lg hover:opacity-90 transition-all"
+                >
+                  I've Made Payment
+                </button>
+              </div>
+            )}
+
+            {/* STEP 3: Verify Payment */}
+            {step === 3 && (
+              <div className="p-8">
+                <button 
+                  onClick={() => setStep(2)}
+                  className="flex items-center gap-2 text-slate-400 hover:text-white mb-6"
+                >
+                  <ArrowLeft size={16} />
+                  Back
+                </button>
+
+                <div className="text-center mb-6">
+                  <ShieldCheck className="w-12 h-12 text-green-400 mx-auto mb-4" />
+                  <h2 className="text-2xl font-bold text-white mb-2">Verify Payment</h2>
+                  <p className="text-slate-400">Enter your transaction ID to complete upgrade</p>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-white mb-2">Transaction ID *</label>
+                  <input
+                    type="text"
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    placeholder="Enter transaction ID from your payment"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                  />
+                  <p className="text-slate-400 text-sm mt-2">
+                    Find this in your {currentMethod.name} app transaction history
+                  </p>
+                </div>
+
+                <div className="mb-6">
+                  <label className="block text-white mb-2">Payment Method</label>
+                  <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white">{currentMethod.name}</span>
+                      <span className="text-slate-400">50 BDT</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-900/20 border border-yellow-700/30 rounded-lg p-4 mb-6">
+                  <h4 className="text-yellow-200 font-bold mb-2">Verification Process:</h4>
+                  <ol className="text-yellow-200 text-sm space-y-2 list-decimal pl-5">
+                    <li>Submit your transaction ID</li>
+                    <li>Admin will verify the payment manually</li>
+                    <li>You'll receive email confirmation within 24 hours</li>
+                    <li>Your account will be upgraded to Pro immediately after verification</li>
+                  </ol>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setStep(2)}
+                    className="flex-1 py-3 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={handleSubmitTransaction}
+                    disabled={processing || !transactionId.trim()}
+                    className="flex-1 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold rounded-lg hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
                     {processing ? (
                       <>
                         <Loader2 className="animate-spin" size={20} />
-                        <span className="tracking-widest uppercase text-xs">Processing...</span>
+                        Submitting...
                       </>
                     ) : (
-                      <>
-                        <Zap size={18} fill="currentColor" />
-                        <span>UPGRADE TO PRO</span>
-                      </>
+                      'Submit for Verification'
                     )}
                   </button>
                 </div>
-              </div>
-            </div>
 
-            {/* Modal Footer Section */}
-            <div className="px-10 pb-10 grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Badge icon={<ShieldCheck size={14}/>} label="Secure Checkout" />
-              <Badge icon={<Sparkles size={14}/>} label="AI Ready" />
-              <Badge icon={<Zap size={14}/>} label="Instant Delivery" />
-              <div className="flex items-center justify-center gap-2 text-slate-500">
-                <span className="text-[10px] font-bold uppercase">v1.5 API</span>
+                <div className="mt-6 p-4 bg-white/5 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <ShieldCheck className="w-5 h-5 text-green-400" />
+                    <span className="text-slate-300 text-sm">
+                      Your payment information is secure and encrypted
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </motion.div>
-    </div>
-  );
-}
-
-function Feature({ text, active, pro }) {
-  return (
-    <li className={`flex items-center gap-3 ${active ? 'text-slate-200' : 'text-slate-600'}`}>
-      <div className={`p-1 rounded-full ${active ? (pro ? 'bg-ai-primary/20 text-ai-primary' : 'bg-emerald-500/20 text-emerald-400') : 'bg-slate-800 text-slate-700'}`}>
-        {active ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
-      </div>
-      <span className="font-medium tracking-tight">{text}</span>
-    </li>
-  );
-}
-
-function Badge({ icon, label }) {
-  return (
-    <div className="flex items-center justify-center gap-2 text-slate-500">
-      {icon}
-      <span className="text-[10px] font-black uppercase tracking-tighter">{label}</span>
     </div>
   );
 }
