@@ -107,7 +107,7 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
     
     setSaving(true);
     try {
-      await saveCVForm(user.uid, formData, cvType, industry);
+      await saveCVForm(user.uid, formData, cvType, industry, cvTitle);
     } catch (error) {
       console.error('Failed to save form to database:', error);
     } finally {
@@ -175,6 +175,7 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
         setFormData(savedForm.formData || formData);
         setCvType(savedForm.cvType || 'modern');
         setIndustry(savedForm.industry || 'technology');
+        setCvTitle(savedForm.cvTitle || 'My Professional CV');
         alert('Saved data loaded successfully!');
       } else {
         alert('No saved data found.');

@@ -291,6 +291,8 @@ function modernTemplate1(data, industry) {
             ${personalInfo.phone ? `<div class="contact-item">📱 ${personalInfo.phone}</div>` : ''}
             ${personalInfo.city ? `<div class="contact-item">📍 ${personalInfo.city}${personalInfo.country ? `, ${personalInfo.country}` : ''}</div>` : ''}
             ${personalInfo.linkedin ? `<div class="contact-item">🔗 ${personalInfo.linkedin}</div>` : ''}
+            ${personalInfo.github ? `<div class="contact-item">💻 ${personalInfo.github}</div>` : ''}
+            ${personalInfo.website ? `<div class="contact-item">🌐 ${personalInfo.website}</div>` : ''}
           </div>
         </div>
         <div class="summary">
@@ -761,7 +763,7 @@ function modernTemplate3(data, industry) {
     <div class="sidebar">
       <div class="profile-circle">👤</div>
       
-      ${personalInfo.email || personalInfo.phone || personalInfo.linkedin ? `
+      ${personalInfo.email || personalInfo.phone || personalInfo.linkedin || personalInfo.github || personalInfo.website ? `
       <div class="sidebar-section">
         <div class="sidebar-title">Contact</div>
         <div style="font-size: 14px; line-height: 1.8;">
@@ -769,6 +771,8 @@ function modernTemplate3(data, industry) {
           ${personalInfo.phone ? `<div>📱 ${personalInfo.phone}</div>` : ''}
           ${personalInfo.city ? `<div>📍 ${personalInfo.city}</div>` : ''}
           ${personalInfo.linkedin ? `<div>🔗 ${personalInfo.linkedin}</div>` : ''}
+          ${personalInfo.github ? `<div>💻 ${personalInfo.github}</div>` : ''}
+          ${personalInfo.website ? `<div>🌐 ${personalInfo.website}</div>` : ''}
         </div>
       </div>
       ` : ''}
@@ -1343,13 +1347,14 @@ function generateEuropassTemplate(data) {
         </div>
         ` : ''}
         
-        ${personalInfo.email || personalInfo.phone || personalInfo.linkedin || personalInfo.website ? `
+        ${personalInfo.email || personalInfo.phone || personalInfo.linkedin || personalInfo.website || personalInfo.github ? `
         <div class="eu-section-title">Contact</div>
         <div class="eu-personal-info">
           ${personalInfo.email ? `<div class="eu-info-row"><span class="eu-info-icon">📧</span> ${personalInfo.email}</div>` : ''}
           ${personalInfo.phone ? `<div class="eu-info-row"><span class="eu-info-icon">📱</span> ${personalInfo.phone}</div>` : ''}
           ${personalInfo.linkedin ? `<div class="eu-info-row"><span class="eu-info-icon">💼</span> ${personalInfo.linkedin}</div>` : ''}
           ${personalInfo.website ? `<div class="eu-info-row"><span class="eu-info-icon">🌐</span> ${personalInfo.website}</div>` : ''}
+          ${personalInfo.github ? `<div class="eu-info-row"><span class="eu-info-icon">💻</span> ${personalInfo.github}</div>` : ''}
         </div>
         ` : ''}
         
@@ -2120,7 +2125,7 @@ function creativeTemplate2(data, industry) {
       </div>
       ` : ''}
       
-      ${personalInfo.email || personalInfo.phone || personalInfo.city || personalInfo.linkedin ? `
+      ${personalInfo.email || personalInfo.phone || personalInfo.city || personalInfo.linkedin || personalInfo.github || personalInfo.website ? `
       <div class="magazine-section">
         <h2 class="section-head">Contact</h2>
         <div style="font-size: 16px; line-height: 1.8;">
@@ -2128,6 +2133,9 @@ function creativeTemplate2(data, industry) {
           ${personalInfo.phone ? `<div>📱 ${personalInfo.phone}</div>` : ''}
           ${personalInfo.city ? `<div>📍 ${personalInfo.city}</div>` : ''}
           ${personalInfo.linkedin ? `<div>🔗 ${personalInfo.linkedin}</div>` : ''}
+          ${personalInfo.github ? `<div>💻 ${personalInfo.github}</div>` : ''}
+          ${personalInfo.website ? `<div>🌐 ${personalInfo.website}</div>` : ''}
+        </div>
         </div>
       </div>
       ` : ''}
@@ -2667,7 +2675,7 @@ function executiveTemplate1(data, industry) {
         </div>
         ` : ''}
         
-        ${personalInfo.email || personalInfo.phone || personalInfo.city || personalInfo.linkedin ? `
+        ${personalInfo.email || personalInfo.phone || personalInfo.city || personalInfo.linkedin || personalInfo.github || personalInfo.website ? `
         <div class="executive-section">
           <h2 class="section-title">Contact Information</h2>
           <div class="contact-info">
@@ -2675,6 +2683,8 @@ function executiveTemplate1(data, industry) {
             ${personalInfo.phone ? `<div class="contact-line">📱 ${personalInfo.phone}</div>` : ''}
             ${personalInfo.city ? `<div class="contact-line">📍 ${personalInfo.city}</div>` : ''}
             ${personalInfo.linkedin ? `<div class="contact-line">🔗 ${personalInfo.linkedin}</div>` : ''}
+            ${personalInfo.github ? `<div class="contact-line">💻 ${personalInfo.github}</div>` : ''}
+            ${personalInfo.website ? `<div class="contact-line">🌐 ${personalInfo.website}</div>` : ''}
           </div>
         </div>
         ` : ''}
@@ -2903,7 +2913,7 @@ function executiveTemplate2(data, industry) {
       </div>
       ` : ''}
       
-      ${personalInfo.email || personalInfo.phone || personalInfo.city || personalInfo.linkedin ? `
+      ${personalInfo.email || personalInfo.phone || personalInfo.city || personalInfo.linkedin || personalInfo.github || personalInfo.website ? `
       <div class="contact-details">
         <h2 class="section-header" style="border: none; padding: 0; margin: 0 0 20px 0;">Contact</h2>
         ${personalInfo.email ? `
@@ -2928,6 +2938,18 @@ function executiveTemplate2(data, industry) {
         <div class="contact-row">
           <span class="contact-icon">🔗</span>
           <span>${personalInfo.linkedin}</span>
+        </div>
+        ` : ''}
+        ${personalInfo.github ? `
+        <div class="contact-row">
+          <span class="contact-icon">💻</span>
+          <span>${personalInfo.github}</span>
+        </div>
+        ` : ''}
+        ${personalInfo.website ? `
+        <div class="contact-row">
+          <span class="contact-icon">🌐</span>
+          <span>${personalInfo.website}</span>
         </div>
         ` : ''}
       </div>
@@ -3088,12 +3110,14 @@ function executiveTemplate3(data, industry) {
         </div>
         ` : ''}
         
-        ${personalInfo.email || personalInfo.phone || personalInfo.city || personalInfo.linkedin ? `
+        ${personalInfo.email || personalInfo.phone || personalInfo.city || personalInfo.linkedin || personalInfo.github || personalInfo.website ? `
         <div class="clevel-contact">
           ${personalInfo.email ? `<div>${personalInfo.email}</div>` : ''}
           ${personalInfo.phone ? `<div>${personalInfo.phone}</div>` : ''}
           ${personalInfo.city ? `<div>${personalInfo.city}</div>` : ''}
           ${personalInfo.linkedin ? `<div>${personalInfo.linkedin}</div>` : ''}
+          ${personalInfo.github ? `<div>${personalInfo.github}</div>` : ''}
+          ${personalInfo.website ? `<div>${personalInfo.website}</div>` : ''}
         </div>
         ` : ''}
       </div>

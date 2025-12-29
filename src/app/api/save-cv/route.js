@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 import { compressCV } from '@/lib/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(request) {
   try {
-    const { userId, htmlContent, title, industry, template } = await request.json();
+    const { userId, htmlContent, title, industry, template, formData } = await request.json();
     
     if (!userId || !htmlContent) {
       return NextResponse.json({ 
@@ -17,7 +18,7 @@ export async function POST(request) {
     const userRef = db.collection('users').doc(userId);
     const userDoc = await userRef.get();
     
-    if (!userDoc.exists() || !userDoc.data().isPro) {
+    if (!userDoc || !userDoc.exists || !userDoc.data().isPro) {
       return NextResponse.json({ 
         success: false, 
         error: 'Only Pro users can save CVs' 
@@ -40,14 +41,15 @@ export async function POST(request) {
       createdAt: new Date().toISOString(),
       lastAccessed: new Date().toISOString(),
       downloadCount: 0,
-      isPublic: false
+      isPublic: false,
+      formData: formData || {} // Store original form data for editing
     };
     
     await cvRef.set(cvData);
     
     // Update user's saved CV count
     await userRef.update({
-      savedCVs: admin.firestore.FieldValue.increment(1),
+      savedCVs: FieldValue.increment(1),
       lastSavedCV: new Date().toISOString()
     });
     

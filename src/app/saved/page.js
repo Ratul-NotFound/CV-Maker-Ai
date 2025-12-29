@@ -36,9 +36,13 @@ export default function SavedPage() {
       
       if (data.success) {
         setSavedCVs(data.cvs || []);
+      } else {
+        console.error('Failed to load CVs:', data.error);
+        setSavedCVs([]);
       }
     } catch (error) {
       console.error('Error loading saved CVs:', error);
+      setSavedCVs([]);
     } finally {
       setLoading(false);
     }
@@ -64,14 +68,20 @@ export default function SavedPage() {
           method: 'DELETE'
         });
         
+        if (!response.ok) {
+          throw new Error(`Delete failed with status ${response.status}`);
+        }
+        
         const data = await response.json();
         if (data.success) {
           setSavedCVs(prev => prev.filter(cv => cv.id !== cvId));
           alert('CV deleted successfully');
+        } else {
+          throw new Error(data.error || 'Failed to delete CV');
         }
       } catch (error) {
         console.error('Error deleting CV:', error);
-        alert('Error deleting CV');
+        alert('Error deleting CV: ' + error.message);
       }
     }
   };
@@ -79,6 +89,11 @@ export default function SavedPage() {
   const handleDownload = async (cvId, title) => {
     try {
       const response = await fetch(`/api/cv/download?cvId=${cvId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Download failed with status ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (data.success && data.html) {
@@ -91,10 +106,12 @@ export default function SavedPage() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+      } else {
+        throw new Error(data.error || 'No HTML content available');
       }
     } catch (error) {
       console.error('Error downloading CV:', error);
-      alert('Error downloading CV');
+      alert('Error downloading CV: ' + error.message);
     }
   };
 

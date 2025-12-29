@@ -203,7 +203,7 @@ export async function upgradeUserToPro(userId) {
   }
 }
 
-export async function saveCVForm(uid, formData, cvType, industry) {
+export async function saveCVForm(uid, formData, cvType, industry, cvTitle = 'My CV') {
   try {
     const formRef = doc(db, 'cvForms', uid);
     await setDoc(formRef, {
@@ -211,6 +211,7 @@ export async function saveCVForm(uid, formData, cvType, industry) {
       formData,
       cvType,
       industry,
+      cvTitle,
       updatedAt: new Date().toISOString(),
       version: '1.0'
     }, { merge: true });

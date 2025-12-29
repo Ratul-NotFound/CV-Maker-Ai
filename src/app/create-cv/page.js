@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { useAuth } from '@/context/AuthContext';
 import dynamic from 'next/dynamic';
 import { Sparkles, Download, Save, RotateCcw, Crown, ChevronLeft } from 'lucide-react';
+import PricingModal from '@/components/PricingModal';
 
 // Dynamically import components
 const CVFormCompact = dynamic(() => import('@/components/CVForm'), {
@@ -32,42 +32,16 @@ const CVPreview = dynamic(() => import('@/components/CVPreview'), {
 
 export default function CreateCVPage() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState({ tokens: 5, isPro: false });
+  const { user, userData, loading } = useAuth();
   const [generatedCV, setGeneratedCV] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [showPricingModal, setShowPricingModal] = useState(false);
   const [cvTitle, setCvTitle] = useState('My Professional CV');
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        // Fetch user data from Firestore
-        fetchUserData(currentUser.uid);
-      } else {
-        router.push('/login');
-      }
-    });
-
-    return () => unsubscribe();
-  }, [router]);
-
-  const fetchUserData = async (uid) => {
-    try {
-      const response = await fetch(`/api/user/${uid}`);
-      const data = await response.json();
-      if (data.success) {
-        setUserData(data.user);
-      } else {
-        setUserData({ tokens: 5, isPro: false });
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      setUserData({ tokens: 5, isPro: false });
-    } finally {
-      setLoading(false);
+    if (!loading && !user) {
+      router.push('/login');
     }
-  };
+  }, [user, loading, router]);
 
   const handleTokenCheck = () => {
     if (!userData?.isPro && (userData?.tokens || 0) <= 0) {
@@ -82,7 +56,7 @@ export default function CreateCVPage() {
   const handleSaveCV = async (cvHtml, title) => {
     if (!userData?.isPro) {
       alert('Only Pro users can save CVs. Please upgrade to Pro.');
-      router.push('/pricing');
+      setShowPricingModal(true);
       return;
     }
 
@@ -98,7 +72,6 @@ export default function CreateCVPage() {
           template: 'modern'      // You should get this from form
         })
       });
-
       const data = await response.json();
       if (data.success) {
         alert('✅ CV saved successfully! You can access it from your dashboard.');
@@ -184,7 +157,7 @@ export default function CreateCVPage() {
             <div className="text-right">
               {!userData?.isPro && (
                 <button 
-                  onClick={() => router.push('/pricing')}
+                  onClick={() => setShowPricingModal(true)}
                   className="text-[10px] md:text-xs bg-gradient-to-r from-yellow-600 to-orange-600 text-white px-2 md:px-3 py-1 rounded-full font-bold hover:opacity-90 transition-opacity whitespace-nowrap"
                 >
                   + Tokens
@@ -204,7 +177,7 @@ export default function CreateCVPage() {
               }
             }}
             onUpgradeNeeded={() => {
-              router.push('/pricing');
+              setShowPricingModal(true);
             }}
             onSaveCV={handleSaveCV}
             cvTitle={cvTitle}
@@ -302,6 +275,14 @@ export default function CreateCVPage() {
           </div>
         </footer>
       </div>
+
+      {/* Pricing Modal */}
+      {showPricingModal && (
+        <PricingModal 
+          onClose={() => setShowPricingModal(false)} 
+          currentUser={user}
+        />
+      )}
     </div>
   );
 }

@@ -422,7 +422,7 @@ export default function Home() {
                 </button>
                 
                 <button
-                  onClick={() => router.push('/pricing')}
+                  onClick={() => router.push('/dashboard')}
                   className="px-10 py-5 bg-white/10 backdrop-blur-sm border border-white/20 text-white font-bold rounded-2xl hover:bg-white/20 hover:border-white/30 transition-all group"
                 >
                   <span className="flex items-center gap-3">
