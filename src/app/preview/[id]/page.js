@@ -19,7 +19,7 @@ const CVPreview = dynamic(() => import('@/components/CVPreview'), {
 export default function PreviewPage() {
   const router = useRouter();
   const params = useParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [cvData, setCvData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,13 +27,18 @@ export default function PreviewPage() {
   const cvId = params.id;
 
   useEffect(() => {
+    // Wait for auth to load
+    if (authLoading) {
+      return;
+    }
+
     if (!user) {
       router.push('/login');
       return;
     }
 
     loadCV();
-  }, [user, cvId]);
+  }, [user, authLoading, cvId, router]);
 
   const loadCV = async () => {
     try {

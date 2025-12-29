@@ -7,7 +7,7 @@ import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
 import { FileText, Download, Eye, Trash2, Calendar, Database, Search, Filter, ExternalLink, Clock } from 'lucide-react';
 
 export default function SavedPage() {
-  const { user, userData } = useAuth();
+  const { user, userData, loading: authLoading } = useAuth();
   const router = useRouter();
   const [savedCVs, setSavedCVs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,6 +15,11 @@ export default function SavedPage() {
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
+    // Wait for auth to load before checking permissions
+    if (authLoading) {
+      return;
+    }
+
     if (!user) {
       router.push('/login');
       return;
@@ -26,7 +31,7 @@ export default function SavedPage() {
     }
 
     loadSavedCVs();
-  }, [user, userData]);
+  }, [user, userData, authLoading, router]);
 
   const loadSavedCVs = async () => {
     try {
@@ -115,7 +120,7 @@ export default function SavedPage() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
         <div className="text-center">
