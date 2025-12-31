@@ -11,6 +11,20 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Validate Firebase configuration
+if (typeof window !== 'undefined') {
+  const missingVars = [];
+  if (!firebaseConfig.apiKey) missingVars.push('NEXT_PUBLIC_FIREBASE_API_KEY');
+  if (!firebaseConfig.authDomain) missingVars.push('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN');
+  if (!firebaseConfig.projectId) missingVars.push('NEXT_PUBLIC_FIREBASE_PROJECT_ID');
+  
+  if (missingVars.length > 0) {
+    console.error('❌ Missing Firebase environment variables:', missingVars);
+  } else {
+    console.log('✅ Firebase client config loaded');
+  }
+}
+
 let app;
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);

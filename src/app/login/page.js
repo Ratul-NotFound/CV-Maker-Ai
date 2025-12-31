@@ -69,8 +69,25 @@ export default function LoginPage() {
     try {
       await login();
     } catch (err) {
-      console.error('Login error:', err);
-      setError('Authentication failed. Please check your credentials and try again.');
+      console.error('Login error details:', {
+        code: err.code,
+        message: err.message,
+        stack: err.stack
+      });
+      
+      let errorMessage = 'Authentication failed. Please try again.';
+      
+      if (err.code === 'auth/popup-blocked') {
+        errorMessage = 'Popup was blocked. Please allow popups for this site.';
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        errorMessage = 'Login cancelled. Please try again.';
+      } else if (err.code === 'auth/unauthorized-domain') {
+        errorMessage = 'This domain is not authorized. Please contact support.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       setIsLoggingIn(false);
     }
   };
