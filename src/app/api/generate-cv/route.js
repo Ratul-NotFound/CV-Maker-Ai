@@ -201,6 +201,8 @@ export async function POST(request) {
 // ============================================================
 // 🔄 GET HANDLER - RETRIEVE SAVED CV
 // ============================================================
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 
+export const dynamic = 'force-dynamic';
+
 // In-memory cache for saved CVs
 const cvCache = new Map();
 const CACHE_TTL = 3 * 60 * 1000; // 3 minutes

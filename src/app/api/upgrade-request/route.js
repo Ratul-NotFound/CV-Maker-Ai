@@ -4,6 +4,8 @@ import { validateInput } from '@/lib/validation';
 import logger from '@/lib/logger';
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request) {
   try {
     // Rate limiting - prevent spam

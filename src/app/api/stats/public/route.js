@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 
+export const dynamic = 'force-dynamic';
+
 // Simple in-memory cache with TTL
 let statsCache = null;
 let cacheTTL = 0;

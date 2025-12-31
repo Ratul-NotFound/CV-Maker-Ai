@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // Check if admin (you can implement proper admin auth later)

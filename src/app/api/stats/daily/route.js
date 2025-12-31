@@ -1,6 +1,8 @@
 import { getDocs, collection } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const cvStorageSnapshot = await getDocs(collection(db, 'cvStorage'));
