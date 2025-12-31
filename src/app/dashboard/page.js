@@ -7,13 +7,17 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
 import PricingModal from '@/components/PricingModal';
-import { getUserSavedCVs, getCVById, deleteSavedCV } from '@/lib/firestore';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { getUserSavedCVs, getCVById, deleteSavedCV, syncSavedCVCount } from '@/lib/firestore';
+import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
 
-export default function Dashboard() {
+function DashboardContent() {
   const router = useRouter();
   const { user, userData, loading } = useAuth();
   const [savedCVs, setSavedCVs] = useState([]);
   const [loadingCVs, setLoadingCVs] = useState(true);
+  const [actualCVCount, setActualCVCount] = useState(0);
   const [publicStats, setPublicStats] = useState({
     totalUsers: 0,
     proUsers: 0,
@@ -23,11 +27,16 @@ export default function Dashboard() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState('');
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
   useEffect(() => {
     if (user) {
-      if (userData?.isPro) {
-        loadSavedCVs();
-      }
+      loadSavedCVs();
       loadPublicStats();
     }
   }, [user, userData]);
@@ -37,10 +46,20 @@ export default function Dashboard() {
     
     setLoadingCVs(true);
     try {
+      // Sync the count first to ensure accuracy
+      if (userData?.isPro) {
+        await syncSavedCVCount(user.uid);
+      }
+      
       const cvs = await getUserSavedCVs(user.uid);
       setSavedCVs(cvs);
+      setActualCVCount(cvs.length);
+      
+      console.log(`Loaded ${cvs.length} saved CVs for user ${user.uid}`);
     } catch (error) {
       console.error('Error loading saved CVs:', error);
+      setSavedCVs([]);
+      setActualCVCount(0);
     } finally {
       setLoadingCVs(false);
     }
@@ -85,6 +104,7 @@ export default function Dashboard() {
         const result = await deleteSavedCV(cvId, user.uid);
         if (result.success) {
           setSavedCVs(prev => prev.filter(cv => cv.id !== cvId));
+          setActualCVCount(prev => Math.max(0, prev - 1));
           alert('CV deleted successfully');
         } else {
           alert('Error deleting CV: ' + result.error);
@@ -94,6 +114,24 @@ export default function Dashboard() {
       }
     }
   };
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
+        <NeuralNetworkBackground />
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white font-semibold">Loading Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Return null if user not authenticated (will redirect)
+  if (!user) {
+    return null;
+  }
 
   const handleDownloadCV = async (cvId) => {
     try {
@@ -131,7 +169,7 @@ export default function Dashboard() {
   }
 
   const stats = {
-    totalCVs: savedCVs.length,
+    totalCVs: actualCVCount,
     totalViews: savedCVs.reduce((sum, cv) => sum + (cv.downloadCount || 0), 0),
     totalDownloads: savedCVs.reduce((sum, cv) => sum + (cv.downloadCount || 0), 0),
     savedSize: savedCVs.reduce((sum, cv) => sum + (cv.originalSize || 0), 0),
@@ -259,12 +297,23 @@ export default function Dashboard() {
                 
                 <h3 className="text-lg md:text-2xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Create New CV</h3>
                 <p className="text-white/50 mb-4 md:mb-6 leading-relaxed text-xs md:text-sm">
-                  Generate a professional, ATS-friendly resume with Gemini AI.
+                  Generate a professional, ATS-friendly resume with Groq AI.
                 </p>
                 
                 <div className="flex items-center justify-between w-full">
                   <span className="text-xs md:text-sm font-bold text-white/90 flex items-center gap-1 md:gap-2 border-b border-white/20 pb-1 group-hover:border-blue-500 transition-colors uppercase tracking-wider">
-                    <Sparkles size={10} className="md:hidden" /> <span className="hidden md:inline"><Sparkles size={12} /> </span>Start Creating <ChevronRight size={12} className="hidden md:inline" />
+                    <motion.div
+                      animate={{ 
+                        rotate: [0, 5, 0, -5, 0],
+                        scale: [1, 1.1, 1]
+                      }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                      className="inline-block"
+                    >
+                      <Sparkles size={14} className="text-blue-400" />
+                    </motion.div>
+                    Start Creating 
+                    <ChevronRight size={12} className="hidden md:inline" />
                   </span>
                   <div className={`text-[10px] md:text-xs ${userData?.isPro ? 'text-green-400' : userData?.tokens > 0 ? 'text-yellow-400' : 'text-red-400'} bg-black/30 px-2 py-0.5 md:px-3 md:py-1 rounded-full border border-white/5`}>
                     {userData?.isPro ? '∞ Tokens' : `${userData?.tokens || 0} left`}
@@ -574,35 +623,22 @@ export default function Dashboard() {
               </button>
             </div>
           </motion.div>
-
-          {/* FOOTER */}
-          <footer className="mt-8 pt-6 border-t border-white/5">
-            <div className="flex flex-col md:flex-row justify-between items-center text-xs md:text-sm text-white/30 font-medium">
-              <div className="flex items-center gap-4 mb-3 md:mb-0 flex-wrap justify-center">
-                <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                  <span>Status: <span className="text-green-400">Online</span></span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Shield className="w-3 h-3 md:w-4 md:h-4" />
-                  <span>Storage: <span className="text-blue-400">Secure</span></span>
-                </div>
-              </div>
-              <div className="flex flex-col md:flex-row items-center gap-3 md:gap-6 text-center md:text-left">
-                <p className="text-xs md:text-sm">© 2024 CV Maker AI</p>
-                <div className="flex items-center gap-3 md:gap-4">
-                  <a href="#" className="hover:text-white transition-colors text-xs">Privacy</a>
-                  <a href="#" className="hover:text-white transition-colors text-xs">Terms</a>
-                  <a href="#" className="hover:text-white transition-colors text-xs">Support</a>
-                </div>
-              </div>
-            </div>
-          </footer>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
 
       {/* Pricing Modal */}
       {showPricingModal && <PricingModal onClose={() => setShowPricingModal(false)} />}
     </>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <ErrorBoundary>
+      <DashboardContent />
+    </ErrorBoundary>
   );
 }

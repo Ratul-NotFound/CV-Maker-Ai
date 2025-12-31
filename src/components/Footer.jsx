@@ -1,10 +1,12 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Sparkles, Github, Twitter, Linkedin, Mail, Cpu } from 'lucide-react';
+import { Sparkles, Github, Twitter, Linkedin, Mail, Cpu, Shield } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const router = useRouter();
 
   return (
     <footer className="relative mt-20 border-t border-white/5 bg-slate-950/50 backdrop-blur-md overflow-hidden">
@@ -23,12 +25,12 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-slate-400 text-sm leading-relaxed mb-6">
-              Empowering professionals with Gemini Pro 1.5 AI technology to craft high-impact career stories.
+              Empowering professionals with advanced AI technology to craft high-impact career stories.
             </p>
             <div className="flex items-center gap-4 text-slate-500">
-              <SocialIcon icon={<Twitter size={18} />} href="#" />
-              <SocialIcon icon={<Github size={18} />} href="#" />
-              <SocialIcon icon={<Linkedin size={18} />} href="#" />
+              <SocialIcon icon={<Twitter size={18} />} href="https://twitter.com" />
+              <SocialIcon icon={<Github size={18} />} href="https://github.com" />
+              <SocialIcon icon={<Linkedin size={18} />} href="https://linkedin.com" />
             </div>
           </div>
 
@@ -36,9 +38,9 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-bold mb-6 text-sm uppercase tracking-widest">Platform</h4>
             <ul className="space-y-4 text-slate-400 text-sm">
-              <li><FooterLink href="/dashboard">User Dashboard</FooterLink></li>
-              <li><FooterLink href="/create-cv">Create New CV</FooterLink></li>
-              <li><FooterLink href="#">AI Templates</FooterLink></li>
+              <li><button onClick={() => router.push('/dashboard')} className="hover:text-white transition-colors duration-200">User Dashboard</button></li>
+              <li><button onClick={() => router.push('/create-cv')} className="hover:text-white transition-colors duration-200">Create New CV</button></li>
+              <li><button onClick={() => router.push('/stats')} className="hover:text-white transition-colors duration-200">Statistics</button></li>
             </ul>
           </div>
 
@@ -46,9 +48,9 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-bold mb-6 text-sm uppercase tracking-widest">Resources</h4>
             <ul className="space-y-4 text-slate-400 text-sm">
-              <li><FooterLink href="#">Help Center</FooterLink></li>
-              <li><FooterLink href="#">Privacy Policy</FooterLink></li>
-              <li><FooterLink href="#">Terms of Service</FooterLink></li>
+              <li><button onClick={() => router.push('/pricing')} className="hover:text-white transition-colors duration-200">Pricing</button></li>
+              <li><span className="text-slate-600 cursor-not-allowed">Privacy Policy</span></li>
+              <li><span className="text-slate-600 cursor-not-allowed">Terms of Service</span></li>
             </ul>
           </div>
 
@@ -61,23 +63,36 @@ export default function Footer() {
             </div>
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-white text-sm font-medium">Gemini Pro 1.5 Online</span>
+              <span className="text-white text-sm font-medium">AI System Online</span>
             </div>
             <p className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">
-              Average generation time: 12.4s
+              Instant CV Generation
             </p>
           </div>
 
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-slate-500 text-xs font-medium">
-            © {currentYear} © 2025  CV Maker AI  |  All rights reserved  |  Developed by Mahmud Hasan Ratul
-          </p>
-          <div className="flex items-center gap-2 text-slate-500 text-xs">
-            <Mail size={14} />
-            <span>m.h.ratul18@gmail.com</span>
+        <div className="mt-12 pt-8 border-t border-white/5">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+            <p className="text-slate-500 text-xs font-medium text-center md:text-left">
+              © 2025 CV Maker AI | All rights reserved | Developed by Mahmud Hasan Ratul
+            </p>
+            <div className="flex items-center gap-2 text-slate-500 text-xs">
+              <Mail size={14} />
+              <span>m.h.ratul18@gmail.com</span>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-3 text-[10px] text-slate-600">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Status: Online</span>
+            </div>
+            <div className="hidden sm:block w-px h-3 bg-white/10"></div>
+            <div className="flex items-center gap-2">
+              <Shield size={12} className="text-blue-400" />
+              <span>Storage: Secure</span>
+            </div>
           </div>
         </div>
       </div>
@@ -87,16 +102,8 @@ export default function Footer() {
 
 function SocialIcon({ icon, href }) {
   return (
-    <a href={href} className="hover:text-ai-primary transition-colors duration-300">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="hover:text-ai-primary transition-colors duration-300">
       {icon}
-    </a>
-  );
-}
-
-function FooterLink({ children, href }) {
-  return (
-    <a href={href} className="hover:text-white transition-colors duration-200 block w-fit">
-      {children}
     </a>
   );
 }

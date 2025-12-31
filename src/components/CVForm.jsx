@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import NeuralNetworkBackground from './NeuralNetworkBackground';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/AuthContext';
 import PricingModal from './PricingModal';
 import { saveCVForm, loadCVForm } from '@/lib/firestore';
+
+const NeuralNetworkBackground = dynamic(() => import('./NeuralNetworkBackground'), {
+  ssr: false
+});
 
 const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
   const { user, userData } = useAuth();
@@ -60,6 +64,7 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
   ];
 
   // --- AUTO-SAVE TO LOCAL STORAGE ---
+  // Load saved form data on mount (only once)
   useEffect(() => {
     if (!user?.uid) return;
     
@@ -68,7 +73,7 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
-        setFormData(parsed.formData || formData);
+        setFormData(prev => ({ ...prev, ...parsed.formData }));
         setCvType(parsed.cvType || 'modern');
         setIndustry(parsed.industry || 'technology');
         setCvTitle(parsed.cvTitle || 'My Professional CV');
@@ -76,7 +81,7 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
         console.error('Error loading saved form data:', error);
       }
     }
-  }, [user]);
+  }, [user?.uid]);
 
   // Save to localStorage on changes (debounced)
   useEffect(() => {
@@ -94,7 +99,7 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
     }, 1000);
 
     return () => clearTimeout(timeoutId);
-  }, [formData, cvType, industry, cvTitle, user]);
+  }, [formData, cvType, industry, cvTitle, user?.uid]);
 
   // Update saveCV state when userData changes
   useEffect(() => {

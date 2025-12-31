@@ -9,47 +9,54 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [userData, setUserData] = useState(null); // Holds live tokens & role
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     let unsubDoc;
+    let unsubscribeAuth;
     let timeoutId;
 
-    const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
-      try {
-        if (currentUser) {
-          setUser(currentUser);
-          
-          // 1. Ensure User Document Exists in DB
-          await createUser(currentUser.uid, currentUser.email, currentUser.displayName);
+    const setupAuthListener = () => {
+      unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
+        try {
+          if (currentUser) {
+            setUser(currentUser);
+            setLoading(false); // Show UI immediately
+            
+            // 1. Ensure User Document Exists
+            await createUser(currentUser.uid, currentUser.email, currentUser.displayName);
 
-          // 2. REAL-TIME LISTENER (Fixes the Sync Issue)
-          const userRef = doc(db, "users", currentUser.uid);
-          unsubDoc = onSnapshot(userRef, (docSnap) => {
-            if (docSnap.exists()) {
-              setUserData(docSnap.data());
-            } else {
-              // Default user data if document doesn't exist
+            // 2. REAL-TIME LISTENER
+            const userRef = doc(db, "users", currentUser.uid);
+            unsubDoc = onSnapshot(userRef, (docSnap) => {
+              if (docSnap.exists()) {
+                setUserData(docSnap.data());
+              } else {
+                setUserData({ tokens: 5, isPro: false });
+              }
+            }, (error) => {
+              console.error('Firestore listener error:', error);
               setUserData({ tokens: 5, isPro: false });
-            }
-          }, (error) => {
-            console.error('Firestore listener error:', error);
-            setUserData({ tokens: 5, isPro: false });
-          });
-        } else {
+            });
+          } else {
+            setUser(null);
+            setUserData(null);
+            setLoading(false); // Show UI immediately for unauthenticated users
+            if (unsubDoc) unsubDoc();
+          }
+        } catch (error) {
+          console.error('Auth error:', error.message);
+          setError(error.message);
           setUser(null);
           setUserData(null);
-          if (unsubDoc) unsubDoc();
+          setLoading(false); // Always show UI, even on error
         }
-      } catch (error) {
-        console.error('Auth error:', error);
-        setUser(null);
-        setUserData(null);
-      } finally {
-        setLoading(false);
-      }
-    });
+      });
+    };
+
+    setupAuthListener();
 
     // Fallback timeout to prevent infinite loading
     timeoutId = setTimeout(() => {
@@ -60,7 +67,7 @@ export const AuthProvider = ({ children }) => {
     }, 10000); // 10 second timeout
 
     return () => {
-      unsubscribeAuth();
+      if (unsubscribeAuth) unsubscribeAuth();
       if (unsubDoc) unsubDoc();
       clearTimeout(timeoutId);
     };
@@ -74,8 +81,9 @@ export const AuthProvider = ({ children }) => {
     userData, 
     login, 
     logout, 
-    loading
-  }), [user, userData, loading]);
+    loading,
+    error
+  }), [user, userData, loading, error]);
 
   return (
     <AuthContext.Provider value={value}>

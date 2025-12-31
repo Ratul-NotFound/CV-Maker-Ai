@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import PricingModal from '@/components/PricingModal';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 export default function PricingPage() {
   const router = useRouter();
@@ -39,6 +40,9 @@ export default function PricingPage() {
           currentUser={user}
         />
       )}
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

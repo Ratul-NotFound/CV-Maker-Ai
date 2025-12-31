@@ -6,6 +6,7 @@ import { signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, Loader2, Fingerprint, AlertTriangle } from 'lucide-react';
+import Footer from '@/components/Footer';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -95,6 +96,9 @@ export default function AdminLoginPage() {
           </button>
         </div>
       </motion.div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

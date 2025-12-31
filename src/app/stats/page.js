@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { FileText, Users, Crown, TrendingUp, Globe, Clock, BarChart3, Download, Activity, Zap, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
+import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
 
 export default function PublicStatsPage() {
   const [stats, setStats] = useState({
@@ -19,31 +21,48 @@ export default function PublicStatsPage() {
   const [chartStartIndex, setChartStartIndex] = useState(0);
 
   useEffect(() => {
-    loadStats();
-    loadDailyStats();
-  }, []);
-
-  const loadStats = async () => {
-    try {
-      setLoading(true);
-      setApiError('');
-      const response = await fetch('/api/stats/public');
-      
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      if (data.success) {
-        setStats({
-          totalGenerations: data.totalGenerations || 0,
-          totalUsers: data.totalUsers || 0,
-          proUsers: data.proUsers || 0,
-          activeToday: data.activeToday || 0,
-          lastUpdated: data.lastUpdated || new Date().toISOString()
-        });
-      } else {
-        setApiError(data.error || 'Failed to load stats');
+    // Load stats and daily stats together to prevent race conditions
+    const loadAllStats = async () => {
+      try {
+        setLoading(true);
+        setApiError('');
+        
+        // Fetch both in parallel
+        const [statsRes, dailyRes] = await Promise.all([
+          fetch('/api/stats/public'),
+          fetch('/api/stats/daily')
+        ]);
+        
+        // Handle stats response
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          if (statsData.success) {
+            setStats({
+              totalGenerations: statsData.totalGenerations || 0,
+              totalUsers: statsData.totalUsers || 0,
+              proUsers: statsData.proUsers || 0,
+              activeToday: statsData.activeToday || 0,
+              lastUpdated: statsData.lastUpdated || new Date().toISOString()
+            });
+            setIsSampleData(false);
+          } else {
+            throw new Error(statsData.error || 'Failed to load stats');
+          }
+        } else {
+          throw new Error(`API Error: ${statsRes.status}`);
+        }
+        
+        // Handle daily stats response
+        if (dailyRes.ok) {
+          const dailyData = await dailyRes.json();
+          if (dailyData.success) {
+            setDailyStats(dailyData.dailyStats || []);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading stats:', error);
+        setApiError(error.message);
+        // Set fallback data
         setStats({
           totalGenerations: 5890,
           totalUsers: 1250,
@@ -52,35 +71,20 @@ export default function PublicStatsPage() {
           lastUpdated: new Date().toISOString()
         });
         setIsSampleData(true);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading stats:', error);
-      setApiError(error.message);
-      setStats({
-        totalGenerations: 5890,
-        totalUsers: 1250,
-        proUsers: 342,
-        activeToday: 45,
-        lastUpdated: new Date().toISOString()
-      });
-      setIsSampleData(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    
+    loadAllStats();
+  }, []);
 
-  const loadDailyStats = async () => {
-    try {
-      const response = await fetch('/api/stats/daily');
-      const data = await response.json();
-      if (data.success) {
-        setDailyStats(data.dailyStats || []);
-        setIsSampleData(data.isSample || false);
-      }
-    } catch (error) {
-      console.error('Error loading daily stats:', error);
-      setIsSampleData(true);
-    }
+  // Old functions kept for backwards compatibility if needed
+  // But now combined into loadAllStats above
+  
+  const loadStats = async () => {
+    // This function is now deprecated - use loadAllStats instead
+    console.warn('loadStats() is deprecated, use the main useEffect hook');
   };
 
   const formatNumber = (num) => {

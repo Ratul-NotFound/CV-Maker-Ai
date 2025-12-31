@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,8 +10,12 @@ import {
   Rocket, Target, Brain, Lock, Award, Star, ChevronRight,
   Shield, PieChart, Users2
 } from 'lucide-react';
-import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
-import Footer from '@/components/Footer';
+import dynamic from 'next/dynamic';import { useFetch } from '@/lib/useFetch';import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
+
+const NeuralNetworkBackground = dynamic(() => import('@/components/NeuralNetworkBackground'), {
+  ssr: false
+});
 
 export default function Home() {
   const router = useRouter();
@@ -25,6 +29,7 @@ export default function Home() {
   });
 
   useEffect(() => {
+    // Only redirect if user is authenticated and auth check is complete
     if (!loading && user) {
       router.push('/dashboard');
     }
@@ -71,14 +76,26 @@ export default function Home() {
     fetchStats();
   }, []);
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-black to-slate-900">
-      <div className="relative">
-        <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-        <div className="absolute inset-0 w-16 h-16 border-4 border-blue-500 border-b-transparent rounded-full animate-spin animation-delay-200"></div>
+  // Show loading state while auth is being checked
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
+        <NeuralNetworkBackground />
+        <div className="relative z-10 text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white font-semibold">Loading...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Skip loading screen - show UI immediately with data loading in background
+  const displayStats = stats || {
+    totalGenerations: 5890,
+    totalUsers: 1250,
+    proUsers: 342,
+    activeToday: 45
+  };
 
   const features = [
     {
@@ -134,27 +151,28 @@ export default function Home() {
 
   const testimonials = [
     {
-      name: "Sarah Chen",
-      role: "Senior Developer at Google",
-      content: "Land two offers in a week. This platform is a game-changer!",
-      avatar: "https://i.pravatar.cc/150?img=1"
+      name: "Professional User",
+      role: "Software Engineer",
+      content: "Created a professional CV in minutes. The AI-powered templates are impressive!",
+      avatar: "https://ui-avatars.com/api/?name=P+U&background=3b82f6&color=fff"
     },
     {
-      name: "Michael Rodriguez",
-      role: "Product Manager",
-      content: "From 0 interviews to 4 in two weeks. The ATS optimization actually works.",
-      avatar: "https://i.pravatar.cc/150?img=2"
+      name: "Career Seeker",
+      role: "Business Analyst",
+      content: "The templates helped me highlight my achievements effectively. Great tool!",
+      avatar: "https://ui-avatars.com/api/?name=C+S&background=a855f7&color=fff"
     },
     {
-      name: "Jessica Williams",
-      role: "Data Scientist",
-      content: "The research CV template got me into my dream PhD program.",
-      avatar: "https://i.pravatar.cc/150?img=3"
+      name: "Tech Professional",
+      role: "Data Analyst",
+      content: "Professional and clean design. Easy to customize for different roles.",
+      avatar: "https://ui-avatars.com/api/?name=T+P&background=10b981&color=fff"
     }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 overflow-hidden">
+      <Navbar />
       <NeuralNetworkBackground />
       
       {/* Animated Background Elements */}
@@ -172,7 +190,14 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-white/10 backdrop-blur-sm mb-8 group hover:scale-105 transition-transform"
             >
-              <Sparkles className="w-4 h-4 text-purple-400" />
+              <motion.div
+                animate={{ 
+                  rotate: [0, 5, 0, -5, 0]
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <Sparkles className="w-5 h-5 text-purple-400" />
+              </motion.div>
               <span className="text-white font-bold text-sm tracking-widest uppercase">AI-POWERED CAREER ACCELERATOR</span>
               <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full animate-pulse"></div>
             </motion.div>
@@ -272,7 +297,7 @@ export default function Home() {
               <div className="hidden sm:block w-px h-4 bg-white/20"></div>
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-purple-400" />
-                <span>60-Second Generation</span>
+                <span>Instant Generation</span>
               </div>
             </div>
           </div>

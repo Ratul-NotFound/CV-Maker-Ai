@@ -6,6 +6,9 @@ import { useAuth } from '@/context/AuthContext';
 import dynamic from 'next/dynamic';
 import { Sparkles, Download, Save, RotateCcw, Crown, ChevronLeft } from 'lucide-react';
 import PricingModal from '@/components/PricingModal';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
 
 // Dynamically import components
 const CVFormCompact = dynamic(() => import('@/components/CVForm'), {
@@ -31,6 +34,14 @@ const CVPreview = dynamic(() => import('@/components/CVPreview'), {
 });
 
 export default function CreateCVPage() {
+  return (
+    <ErrorBoundary>
+      <CreateCVContent />
+    </ErrorBoundary>
+  );
+}
+
+function CreateCVContent() {
   const router = useRouter();
   const { user, userData, loading } = useAuth();
   const [generatedCV, setGeneratedCV] = useState(null);
@@ -42,6 +53,23 @@ export default function CreateCVPage() {
       router.push('/login');
     }
   }, [user, loading, router]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white font-semibold">Loading CV Creator...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Return null while redirecting
+  if (!user) {
+    return null;
+  }
 
   const handleTokenCheck = () => {
     if (!userData?.isPro && (userData?.tokens || 0) <= 0) {
@@ -261,19 +289,8 @@ export default function CreateCVPage() {
           </div>
         )}
 
-        {/* Compact Footer */}
-        <footer className="mt-8 md:mt-12 pt-4 md:pt-6 border-t border-white/5">
-          <div className="flex flex-col md:flex-row justify-between items-center text-xs text-white/30 font-medium">
-            <p className="text-center md:text-left mb-2 md:mb-0">
-              © 2025 CV Maker AI  |  All rights reserved  |  Developed by Mahmud Hasan Ratul
-            </p>
-            <div className="flex items-center gap-4">
-              <a href="#" className="hover:text-white transition-colors text-xs">Privacy</a>
-              <a href="#" className="hover:text-white transition-colors text-xs">Terms</a>
-              <a href="#" className="hover:text-white transition-colors text-xs">Support</a>
-            </div>
-          </div>
-        </footer>
+        {/* Footer */}
+        <Footer />
       </div>
 
       {/* Pricing Modal */}

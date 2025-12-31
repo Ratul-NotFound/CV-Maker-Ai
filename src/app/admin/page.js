@@ -28,6 +28,7 @@ import {
   X,
   Minus
 } from "lucide-react";
+import Footer from '@/components/Footer';
 import { motion } from "framer-motion";
 
 export default function AdminPage() {
@@ -821,6 +822,9 @@ export default function AdminPage() {
           </>
         )}
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

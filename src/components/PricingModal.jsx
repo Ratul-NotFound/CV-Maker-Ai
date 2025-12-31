@@ -14,25 +14,25 @@ export default function PricingModal({ onClose, currentUser }) {
 
   const paymentMethods = {
     bikash: {
-      name: 'Bikash',
+      name: 'Bkash',
       number: '01784090278',
       instructions: 'Send 50 BDT to this personal number',
       type: 'Personal',
-      accountName: 'MD. HASAN RATUL'
+      accountName: 'Mahmud HASAN RATUL'
     },
     nagad: {
       name: 'Nagad',
       number: '01784090278',
       instructions: 'Send 50 BDT to this personal number',
       type: 'Personal',
-      accountName: 'MD. HASAN RATUL'
+      accountName: 'Mahmud HASAN RATUL'
     },
     rocket: {
       name: 'Rocket',
       number: '01784090278',
       instructions: 'Send 50 BDT to this personal number',
       type: 'Personal',
-      accountName: 'MD. HASAN RATUL'
+      accountName: 'Mahmud HASAN RATUL'
     }
   };
 

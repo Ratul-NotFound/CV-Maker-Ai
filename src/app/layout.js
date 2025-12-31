@@ -4,10 +4,14 @@ import Navbar from "@/components/Navbar";
 import NeuralNetworkBackground from "@/components/NeuralNetworkBackground";
 
 export const metadata = {
-  title: "AI CV Maker", 
+  title: "CV Maker AI", 
   description: "Generate professional CVs with AI",
   icons: {
-    icon: '/icon.svg', // This points to the file we just made
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' }
+    ],
+    apple: '/favicon.svg'
   },
 };
 

@@ -6,6 +6,8 @@ const NeuralNetworkBackground = () => {
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const ctx = canvas.getContext('2d');
     let animationFrameId;
     let particles = [];
@@ -41,7 +43,7 @@ const NeuralNetworkBackground = () => {
 
     const init = () => {
       particles = [];
-      const numberOfParticles = Math.floor((canvas.width * canvas.height) / 15000);
+      const numberOfParticles = Math.floor((canvas.width * canvas.height) / 20000);
       for (let i = 0; i < numberOfParticles; i++) {
         particles.push(new Particle());
       }

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 
+// In-memory cache for saved CVs
+const cvCache = new Map();
+const CACHE_TTL = 3 * 60 * 1000; // 3 minutes
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -13,52 +17,77 @@ export async function GET(request) {
       }, { status: 400 });
     }
 
+    // Check cache first
+    const cacheKey = `cvs:${userId}`;
+    const cached = cvCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return NextResponse.json({ success: true, cvs: cached.data }, {
+        headers: {
+          'Cache-Control': 'public, max-age=180',
+          'X-Cache': 'HIT'
+        }
+      });
+    }
+
     // Query all CVs for this user from cvStorage collection
-    // Note: Not using orderBy to avoid requiring a composite index
-    // Sorting is done on client side
     const cvSnapshot = await db
       .collection('cvStorage')
       .where('userId', '==', userId)
+      .limit(100) // Safety limit
       .get();
 
     const cvs = [];
     cvSnapshot.forEach(doc => {
-      try {
-        const cvData = doc.data();
-        cvs.push({
-          id: doc.id,
-          title: cvData.title || 'Untitled CV',
-          template: cvData.template || 'modern',
-          industry: cvData.industry || 'general',
-          createdAt: cvData.createdAt || new Date().toISOString(),
-          lastAccessed: cvData.lastAccessed,
-          downloadCount: cvData.downloadCount || 0,
-          isPublic: cvData.isPublic || false
-          // Don't send HTML content in list view
-        });
-      } catch (docError) {
-        console.error('Error processing CV document:', doc.id, docError);
-      }
+      const cvData = doc.data();
+      cvs.push({
+        id: doc.id,
+        title: cvData.title || 'Untitled CV',
+        template: cvData.template || 'modern',
+        industry: cvData.industry || 'general',
+        createdAt: cvData.createdAt || new Date().toISOString(),
+        lastAccessed: cvData.lastAccessed,
+        downloadCount: cvData.downloadCount || 0,
+        isPublic: cvData.isPublic || false
+      });
     });
 
-    // Sort by createdAt on the server side (descending)
+    // Sort by createdAt (descending)
     cvs.sort((a, b) => {
       const dateA = new Date(a.createdAt || 0).getTime();
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateB - dateA;
     });
 
-    return NextResponse.json({
-      success: true,
-      cvs: cvs,
-      count: cvs.length
+    // Cache the result
+    cvCache.set(cacheKey, {
+      data: cvs,
+      expiresAt: Date.now() + CACHE_TTL
     });
 
+    return NextResponse.json({ success: true, cvs }, {
+      headers: {
+        'Cache-Control': 'public, max-age=180',
+        'X-Cache': 'MISS'
+      }
+    });
   } catch (error) {
     console.error('Error fetching saved CVs:', error);
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to fetch saved CVs'
+
+    // Try to return cached data on error
+    const cacheKey = `cvs:${searchParams?.get('userId')}`;
+    const cached = cvCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json({ success: true, cvs: cached.data }, {
+        headers: {
+          'Cache-Control': 'public, max-age=60',
+          'X-Cache': 'STALE'
+        }
+      });
+    }
+
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
     }, { status: 500 });
   }
 }

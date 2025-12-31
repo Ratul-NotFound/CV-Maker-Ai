@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import dynamic from 'next/dynamic';
 import { Download, Edit, ArrowLeft, Loader2 } from 'lucide-react';
 import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
+import Footer from '@/components/Footer';
 
 const CVPreview = dynamic(() => import('@/components/CVPreview'), {
   ssr: false,
@@ -38,6 +39,25 @@ export default function PreviewPage() {
     }
 
     loadCV();
+  }, [user, authLoading, cvId, router]);
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
+        <NeuralNetworkBackground />
+        <div className="relative z-10 text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-white mx-auto mb-4" />
+          <p className="text-white/70">Checking Access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Return null while redirecting
+  if (!user) {
+    return null;
+  }
   }, [user, authLoading, cvId, router]);
 
   const loadCV = async () => {
@@ -121,44 +141,51 @@ export default function PreviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 pt-28 pb-12 px-4 relative z-0">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 pt-16 sm:pt-20 pb-6 sm:pb-8 px-2 sm:px-4 relative z-0">
       <NeuralNetworkBackground />
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4 sm:mb-6">
+          <div className="flex-1">
             <button
               onClick={() => router.push('/saved')}
-              className="flex items-center gap-2 text-white/60 hover:text-white mb-4 transition-colors"
+              className="flex items-center gap-2 text-white/60 hover:text-white mb-3 transition-colors active:scale-95 touch-manipulation"
             >
-              <ArrowLeft size={16} />
-              Back to Saved CVs
+              <ArrowLeft size={18} />
+              <span className="text-sm">Back to Saved CVs</span>
             </button>
-            <h1 className="text-3xl md:text-4xl font-black text-white mb-2">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-white mb-1.5 leading-tight">
               {cvData.title}
             </h1>
-            <p className="text-white/60 text-sm">
-              {cvData.template.charAt(0).toUpperCase() + cvData.template.slice(1)} Template • {cvData.industry.charAt(0).toUpperCase() + cvData.industry.slice(1)}
+            <p className="text-white/60 text-xs sm:text-sm">
+              <span className="inline-flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-blue-500/20 rounded text-blue-300 text-xs font-medium">
+                  {cvData.template.charAt(0).toUpperCase() + cvData.template.slice(1)}
+                </span>
+                <span className="px-2 py-0.5 bg-purple-500/20 rounded text-purple-300 text-xs font-medium">
+                  {cvData.industry.charAt(0).toUpperCase() + cvData.industry.slice(1)}
+                </span>
+              </span>
             </p>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-2 w-full md:w-auto md:flex-shrink-0">
             {cvData.formData && (
               <button
                 onClick={handleEdit}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold flex items-center gap-2 transition-colors"
+                className="flex-1 md:flex-none px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg text-sm touch-manipulation"
               >
-                <Edit size={16} />
-                Edit
+                <Edit size={18} />
+                <span>Edit CV</span>
               </button>
             )}
             <button
               onClick={handleDownload}
-              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2 transition-colors"
+              className="flex-1 md:flex-none px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg text-sm touch-manipulation"
             >
-              <Download size={16} />
-              Download
+              <Download size={18} />
+              <span>Download</span>
             </button>
           </div>
         </div>
@@ -166,6 +193,9 @@ export default function PreviewPage() {
         {/* Preview */}
         <CVPreview cvHtml={cvData.htmlContent} />
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

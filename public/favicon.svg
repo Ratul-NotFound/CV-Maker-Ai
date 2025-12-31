@@ -1,0 +1,59 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradient Background -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:rgb(59,130,246);stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:rgb(168,85,247);stop-opacity:0.2" />
+    </linearGradient>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:rgb(96,165,250);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:rgb(147,51,234);stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background Rounded Square -->
+  <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#bgGrad)" stroke="rgb(59,130,246)" stroke-width="1" opacity="0.8"/>
+  
+  <!-- Sparkles Icon -->
+  <g transform="translate(16, 16)">
+    <!-- Center Star -->
+    <path d="M 0,-6 L 1.5,-1.5 L 6,0 L 1.5,1.5 L 0,6 L -1.5,1.5 L -6,0 L -1.5,-1.5 Z" fill="url(#iconGrad)">
+      <animateTransform
+        attributeName="transform"
+        attributeType="XML"
+        type="rotate"
+        from="0 0 0"
+        to="360 0 0"
+        dur="8s"
+        repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Top Right Small Star -->
+    <path d="M 4,-8 L 4.5,-6.5 L 6,-6 L 4.5,-5.5 L 4,-4 L 3.5,-5.5 L 2,-6 L 3.5,-6.5 Z" fill="rgb(147,197,253)">
+      <animateTransform
+        attributeName="transform"
+        attributeType="XML"
+        type="scale"
+        values="1;1.2;1"
+        dur="2s"
+        repeatCount="indefinite"/>
+    </path>
+    
+    <!-- Bottom Left Small Star -->
+    <path d="M -5,6 L -4.5,7 L -4,6.5 L -4.5,6 L -5,5.5 L -5.5,6 L -6,6.5 L -5.5,7 Z" fill="rgb(196,181,253)">
+      <animateTransform
+        attributeName="transform"
+        attributeType="XML"
+        type="scale"
+        values="1;1.3;1"
+        dur="2.5s"
+        repeatCount="indefinite"/>
+    </path>
+  </g>
+  
+  <!-- Ping Animation Ring -->
+  <rect x="2" y="2" width="28" height="28" rx="8" fill="none" stroke="rgb(59,130,246)" stroke-width="2" opacity="0.3">
+    <animate attributeName="opacity" values="0.3;0;0.3" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="stroke-width" values="2;4;2" dur="3s" repeatCount="indefinite"/>
+  </rect>
+</svg>

@@ -93,6 +93,9 @@ export const saveCVForProUser = async (userId, cvData) => {
       lastSavedCV: new Date().toISOString()
     });
 
+    // Clear cache for this user
+    queryCache.delete(`cvs_${userId}`);
+
     return { success: true, cvId: cvRef.id };
   } catch (error) {
     console.error('Error saving CV:', error);
@@ -134,10 +137,11 @@ export const getCVById = async (cvId) => {
     const cvData = cvDoc.data();
     const decompressedHtml = decompressCV(cvData.compressedHtml);
 
-    await updateDoc(cvRef, {
+    // Update metadata asynchronously
+    updateDoc(cvRef, {
       lastAccessed: new Date().toISOString(),
       downloadCount: increment(1)
-    });
+    }).catch(err => console.error('Error updating CV:', err));
 
     return {
       id: cvDoc.id,
@@ -171,6 +175,31 @@ export const deleteSavedCV = async (cvId, userId) => {
     return { success: true };
   } catch (error) {
     console.error('Error deleting CV:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Sync saved CV count with actual database count
+export const syncSavedCVCount = async (userId) => {
+  try {
+    // Get actual count from database
+    const q = query(
+      collection(db, 'cvStorage'),
+      where('userId', '==', userId)
+    );
+    const snapshot = await getDocs(q);
+    const actualCount = snapshot.size;
+    
+    // Update user document with correct count
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      savedCVs: actualCount
+    });
+    
+    console.log(`Synced CV count for user ${userId}: ${actualCount}`);
+    return { success: true, count: actualCount };
+  } catch (error) {
+    console.error('Error syncing CV count:', error);
     return { success: false, error: error.message };
   }
 };
@@ -239,7 +268,6 @@ export async function loadCVForm(uid) {
 export const getPublicStats = async () => {
   try {
     const usersSnapshot = await getDocs(collection(db, 'users'));
-    const cvStorageSnapshot = await getDocs(collection(db, 'cvStorage'));
     
     const users = [];
     usersSnapshot.forEach(doc => users.push(doc.data()));

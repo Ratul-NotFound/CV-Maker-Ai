@@ -42,8 +42,20 @@ export default function Navbar() {
       <nav className="bg-slate-950/80 backdrop-blur-md border-b border-white/10 fixed top-0 w-full z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            <button onClick={() => router.push(user ? '/dashboard' : '/')} className="flex items-center space-x-2 group shrink-0">
-              <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-yellow-400 group-hover:rotate-12 transition-transform" />
+            <button onClick={() => router.push(user ? '/dashboard' : '/')} className="flex items-center space-x-3 group shrink-0">
+              <motion.div
+                animate={{ 
+                  y: [0, -4, 0],
+                  rotate: [0, 5, 0, -5, 0]
+                }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                className="relative"
+              >
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl flex items-center justify-center border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.3)] group-hover:shadow-[0_0_30px_rgba(59,130,246,0.5)] transition-all">
+                  <Sparkles className="w-5 h-5 text-blue-400" />
+                </div>
+                <div className="absolute inset-0 border-2 border-blue-500/30 rounded-xl animate-ping opacity-20"></div>
+              </motion.div>
               <span className="text-lg md:text-2xl font-bold text-white tracking-tight">CV Maker AI</span>
             </button>
 

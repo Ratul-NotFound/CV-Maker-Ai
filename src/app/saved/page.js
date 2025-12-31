@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
+import Footer from '@/components/Footer';
 import { FileText, Download, Eye, Trash2, Calendar, Database, Search, Filter, ExternalLink, Clock } from 'lucide-react';
 
 export default function SavedPage() {
@@ -32,6 +33,24 @@ export default function SavedPage() {
 
     loadSavedCVs();
   }, [user, userData, authLoading, router]);
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
+        <NeuralNetworkBackground />
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white font-semibold">Checking Access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Return null while redirecting
+  if (!user || !userData?.isPro) {
+    return null;
+  }
 
   const loadSavedCVs = async () => {
     try {
@@ -306,6 +325,9 @@ export default function SavedPage() {
           <p className="mt-2">Need help? Contact support@cvmaker.com</p>
         </div>
       </div>
+      
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
