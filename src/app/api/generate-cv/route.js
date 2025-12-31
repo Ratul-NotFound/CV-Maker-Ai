@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin'; 
 import * as admin from 'firebase-admin';
-import { generateCVByType } from '@/lib/cvTemplates';
+import { generateCVHTML } from '@/lib/groq';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
@@ -90,9 +90,9 @@ export async function POST(request) {
       }, { status: 402 });
     }
 
-    // 4. GENERATE CV WITH TEMPLATE SYSTEM
+    // 4. GENERATE CV WITH GROQ AI
     if (process.env.DEBUG) console.log(`[API] Generating ${cvType} CV for industry: ${industry}`);
-    const cvHtml = await generateCVByType(formData, cvType, industry);
+    const cvHtml = await generateCVHTML(formData, cvType, industry);
 
     if (!cvHtml || cvHtml.length < 500) {
       throw new Error('CV generation produced invalid output');
@@ -201,8 +201,6 @@ export async function POST(request) {
 // ============================================================
 // 🔄 GET HANDLER - RETRIEVE SAVED CV
 // ============================================================
-export const dynamic = 'force-dynamic';
-
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
