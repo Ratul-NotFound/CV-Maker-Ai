@@ -1,9 +1,17 @@
 import Groq from "groq-sdk";
 import { INDUSTRY_COLORS } from "./cvTemplates.js";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+// Initialize Groq client only if API key is available
+let groq = null;
+try {
+  if (process.env.GROQ_API_KEY) {
+    groq = new Groq({
+      apiKey: process.env.GROQ_API_KEY,
+    });
+  }
+} catch (error) {
+  console.warn('Groq client initialization failed:', error.message);
+}
 
 // ============================================================
 // 🎨 GROQ MODEL CONFIGURATION
@@ -148,6 +156,11 @@ const INDUSTRY_FOCUS = {
 // ============================================================
 export async function generateCVHTML(formData, cvType = "modern", industry = "technology") {
   try {
+    // Check if Groq is available
+    if (!groq) {
+      throw new Error('Groq API key is not configured. Please set GROQ_API_KEY environment variable.');
+    }
+    
     const timestamp = Date.now();
     const randomSeed = Math.floor(Math.random() * 10000000);
     const uniqueId = `${cvType}_${industry}_${randomSeed}`;
