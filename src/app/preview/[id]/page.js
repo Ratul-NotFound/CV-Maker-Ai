@@ -27,39 +27,6 @@ export default function PreviewPage() {
 
   const cvId = params.id;
 
-  useEffect(() => {
-    // Wait for auth to load
-    if (authLoading) {
-      return;
-    }
-
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-
-    loadCV();
-  }, [user, authLoading, cvId, router]);
-
-  // Show loading while checking auth
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
-        <NeuralNetworkBackground />
-        <div className="relative z-10 text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-white mx-auto mb-4" />
-          <p className="text-white/70">Checking Access...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Return null while redirecting
-  if (!user) {
-    return null;
-  }
-  }, [user, authLoading, cvId, router]);
-
   const loadCV = async () => {
     try {
       setLoading(true);
@@ -112,6 +79,38 @@ export default function PreviewPage() {
     // Navigate to create-cv with edit flag
     router.push(`/create-cv?edit=${cvId}`);
   };
+
+  useEffect(() => {
+    // Wait for auth to load
+    if (authLoading) {
+      return;
+    }
+
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    loadCV();
+  }, [user, authLoading, cvId, router]);
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
+        <NeuralNetworkBackground />
+        <div className="relative z-10 text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-white mx-auto mb-4" />
+          <p className="text-white/70">Checking Access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Return null while redirecting
+  if (!user) {
+    return null;
+  }
 
   if (loading) {
     return (
