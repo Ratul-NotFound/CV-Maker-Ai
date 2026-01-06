@@ -1,6 +1,6 @@
 'use client';
 
-// Modern template configuration
+// Modern template configuration - matches actual templates from modern.js
 const MODERN_COUNT = 30;
 
 const modernTemplateNames = [
@@ -12,11 +12,46 @@ const modernTemplateNames = [
   'Finance Professional', 'Healthcare Modern', 'Legal Traditional', 'Consulting Clean', 'Data Science'
 ];
 
-const getModernDesign = (index, palette) => {
-  // Return basic design info for preview rendering
+// Actual color schemes from modern.js
+const templateColors = {
+  1: { header: '#0f172a', sidebar: '#1e293b', accent: '#3b82f6', text: '#f8fafc' }, // Executive
+  2: { header: '#134e4a', sidebar: '#ccfbf1', accent: '#14b8a6', text: '#134e4a' }, // Slate-Teal
+  3: { header: '#0c4a6e', sidebar: '#bfdbfe', accent: '#0ea5e9', text: '#0c4a6e' }, // Modern-Gradient
+  4: { header: '#7f1d1d', sidebar: '#fee2e2', accent: '#dc2626', text: '#7f1d1d' }, // Burgundy
+  5: { header: '#1e3a8a', sidebar: '#bfdbfe', accent: '#2563eb', text: '#1e3a8a' }, // Royal-Blue
+  6: { header: '#5b21b6', sidebar: '#ddd6fe', accent: '#8b5cf6', text: '#5b21b6' }, // Charcoal-Violet
+  7: { header: '#0f172a', sidebar: '#334155', accent: '#60a5fa', text: '#f1f5f9' }, // Modern-Split
+  8: { header: '#1e293b', sidebar: '#f1f5f9', accent: '#3b82f6', text: '#0f172a' }, // Executive-Banner
+  9: { header: '#083344', sidebar: '#155e75', accent: '#06b6d4', text: '#67e8f9' }, // Tech-Modern
+  10: { header: '#fafafa', sidebar: '#ffffff', accent: '#1e293b', text: '#0f172a' }, // Minimalist
+  11: { header: '#1e293b', sidebar: '#e2e8f0', accent: '#3b82f6', text: '#0f172a' }, // Photo-Accent
+  12: { header: '#1e40af', sidebar: '#bfdbfe', accent: '#3b82f6', text: '#1e40af' }, // Gradient-Modern
+  13: { header: '#fafafa', sidebar: '#ffffff', accent: '#1e293b', text: '#0f172a' }, // Swiss-Clean
+  14: { header: '#f8fafc', sidebar: '#e2e8f0', accent: '#3b82f6', text: '#0f172a' }, // Scandi-Minimal
+  15: { header: '#1e40af', sidebar: '#bfdbfe', accent: '#3b82f6', text: '#1e40af' }, // Modern-Clean
+  16: { header: '#fafafa', sidebar: '#f8fafc', accent: '#1e293b', text: '#0f172a' }, // Traditional
+  17: { header: '#312e81', sidebar: '#c7d2fe', accent: '#6366f1', text: '#312e81' }, // Timeline-Blue
+  18: { header: '#f8fafc', sidebar: '#ffffff', accent: '#3b82f6', text: '#0f172a' }, // Ultra-Minimal
+  19: { header: '#581c87', sidebar: '#e9d5ff', accent: '#a855f7', text: '#581c87' }, // Bold-Creative
+  20: { header: '#065f46', sidebar: '#a7f3d0', accent: '#10b981', text: '#065f46' }, // Marketing-Orange
+  21: { header: '#18181b', sidebar: '#f5f5f5', accent: '#71717a', text: '#18181b' }, // Design-Aesthetic
+  22: { header: '#9f1239', sidebar: '#fecdd3', accent: '#f43f5e', text: '#9f1239' }, // Startup-Vibrant
+  23: { header: '#9a3412', sidebar: '#fed7aa', accent: '#f97316', text: '#9a3412' }, // Agency-Bold
+  24: { header: '#78350f', sidebar: '#fde68a', accent: '#f59e0b', text: '#78350f' }, // Freelance-Pro
+  25: { header: '#1e3a8a', sidebar: '#93c5fd', accent: '#2563eb', text: '#1e3a8a' }, // Corp-Navy
+  26: { header: '#1e40af', sidebar: '#93c5fd', accent: '#3b82f6', text: '#1e40af' }, // Finance-Blue
+  27: { header: '#155e75', sidebar: '#a5f3fc', accent: '#06b6d4', text: '#155e75' }, // Healthcare-Blue
+  28: { header: '#1c1917', sidebar: '#f5f5f4', accent: '#78716c', text: '#1c1917' }, // Legal-Formal
+  29: { header: '#0f172a', sidebar: '#e2e8f0', accent: '#475569', text: '#0f172a' }, // Consulting-Clean
+  30: { header: '#0c4a6e', sidebar: '#164e63', accent: '#0ea5e9', text: '#67e8f9' }  // Tech-Data
+};
+
+const getModernDesign = (index) => {
+  const colors = templateColors[index + 1] || templateColors[1];
   return {
     name: modernTemplateNames[index] || `Modern ${index + 1}`,
-    id: index + 1
+    id: index + 1,
+    ...colors
   };
 };
 
@@ -187,32 +222,165 @@ const ModernPreviews = ({ selectedTemplate, onSelectTemplate, industry = 'techno
                 {/* Header */}
                 <div
                   style={{
-                    background: design.headerBg,
-                    color: design.headerText,
-                    padding: design.headerStyle === 'centered' ? '10px 8px' : '8px 10px',
-                    textAlign: design.headerStyle === 'centered' || design.headerStyle === 'centered-clean' || design.headerStyle === 'centered-elegant' || design.headerStyle === 'formal-centered' ? 'center' : 'left',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    flexDirection: design.headerStyle === 'centered' ? 'column' : 'row',
-                    borderBottom: '0.5px solid ' + design.accentColor
+                    background: design.header,
+                    color: design.text,
+                    padding: '8px 6px',
+                    textAlign: 'center',
+                    borderBottom: `1px solid ${design.accent}`
                   }}
                 >
-                  {/* Profile Photo */}
+                  <div style={{ fontWeight: 'bold', fontSize: '4px', marginBottom: '1px' }}>
+                    {demo.name}
+                  </div>
+                  <div style={{ fontSize: '2.5px', opacity: 0.9 }}>
+                    {demo.title}
+                  </div>
+                </div>
+
+                {/* Body with sidebar */}
+                <div style={{ display: 'flex', height: 'calc(100% - 20px)' }}>
+                  {/* Sidebar */}
+                  <div
+                    style={{
+                      width: '35%',
+                      background: design.sidebar,
+                      padding: '4px 3px',
+                      fontSize: '2.2px'
+                    }}
+                  >
+                    {/* Skills */}
+                    <div style={{ marginBottom: '3px' }}>
+                      <div style={{ 
+                        fontWeight: 'bold', 
+                        fontSize: '2.8px', 
+                        color: design.accent,
+                        marginBottom: '1.5px',
+                        borderBottom: `0.5px solid ${design.accent}`,
+                        paddingBottom: '0.5px'
+                      }}>
+                        SKILLS
+                      </div>
+                      {demo.skills.slice(0, 4).map((skill, idx) => (
+                        <div key={idx} style={{ 
+                          marginBottom: '0.8px',
+                          paddingLeft: '2px',
+                          fontSize: '2px'
+                        }}>
+                          • {skill}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Contact */}
+                    <div>
+                      <div style={{ 
+                        fontWeight: 'bold', 
+                        fontSize: '2.8px', 
+                        color: design.accent,
+                        marginBottom: '1.5px',
+                        borderBottom: `0.5px solid ${design.accent}`,
+                        paddingBottom: '0.5px'
+                      }}>
+                        CONTACT
+                      </div>
+                      <div style={{ fontSize: '2px', lineHeight: '1.4' }}>
+                        <div>{demo.location}</div>
+                        <div>{demo.email}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Main Content */}
+                  <div style={{ flex: 1, padding: '4px 3px', fontSize: '2.2px' }}>
+                    {/* Summary */}
+                    <div style={{ marginBottom: '3px' }}>
+                      <div style={{ 
+                        fontWeight: 'bold', 
+                        fontSize: '2.8px', 
+                        color: design.accent,
+                        marginBottom: '1.5px',
+                        borderBottom: `0.5px solid ${design.accent}`,
+                        paddingBottom: '0.5px'
+                      }}>
+                        PROFILE
+                      </div>
+                      <div style={{ fontSize: '2px', lineHeight: '1.3', opacity: 0.85 }}>
+                        {demo.summary.substring(0, 80)}...
+                      </div>
+                    </div>
+
+                    {/* Experience */}
+                    <div style={{ marginBottom: '3px' }}>
+                      <div style={{ 
+                        fontWeight: 'bold', 
+                        fontSize: '2.8px', 
+                        color: design.accent,
+                        marginBottom: '1.5px',
+                        borderBottom: `0.5px solid ${design.accent}`,
+                        paddingBottom: '0.5px'
+                      }}>
+                        EXPERIENCE
+                      </div>
+                      <div style={{ fontSize: '2.2px', marginBottom: '2px' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '2.5px' }}>
+                          {demo.experience[0].position}
+                        </div>
+                        <div style={{ fontSize: '2px', opacity: 0.7 }}>
+                          {demo.company} • {demo.experience[0].startDate}
+                        </div>
+                        <div style={{ fontSize: '1.8px', marginTop: '1px', opacity: 0.6 }}>
+                          Led development team • Increased efficiency
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Education */}
+                    <div>
+                      <div style={{ 
+                        fontWeight: 'bold', 
+                        fontSize: '2.8px', 
+                        color: design.accent,
+                        marginBottom: '1.5px',
+                        borderBottom: `0.5px solid ${design.accent}`,
+                        paddingBottom: '0.5px'
+                      }}>
+                        EDUCATION
+                      </div>
+                      <div style={{ fontSize: '2.2px' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '2.5px' }}>
+                          {demo.degree}
+                        </div>
+                        <div style={{ fontSize: '2px', opacity: 0.7 }}>
+                          {demo.university}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Header Section */}
+                <div style={{ 
+                  backgroundColor: design.header,
+                  color: design.text,
+                  padding: '4px 5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  minHeight: '18px'
+                }}>
                   {demo.includePhoto && demo.photo && (
-                    <div style={{
-                      width: '15px',
-                      height: '15px',
+                    <div style={{ 
+                      width: '14px', 
+                      height: '14px', 
                       borderRadius: '50%',
                       overflow: 'hidden',
-                      border: `0.5px solid ${design.headerText === '#ffffff' ? 'rgba(255,255,255,0.3)' : '#cccccc'}`,
                       flexShrink: 0,
-                      background: '#ccc'
+                      border: `1px solid ${design.text}40`
                     }}>
                       <div style={{
-                        width: '15px',
-                        height: '15px',
-                        background: `url(${demo.photo})`,
+                        width: '100%',
+                        height: '100%',
+                        backgroundImage: `url(${demo.photo})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center'
                       }}></div>
