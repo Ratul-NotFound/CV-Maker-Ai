@@ -1,6 +1,24 @@
 'use client';
 
-import { modernTemplateNames, getModernDesign, MODERN_COUNT } from '@/lib/templates/modernDesigns';
+// Modern template configuration
+const MODERN_COUNT = 30;
+
+const modernTemplateNames = [
+  'Executive Diamond', 'Teal Wave', 'Purple Fusion', 'Burgundy Classic', 'Royal Impact',
+  'Violet Cosmos', 'Corporate Split', 'Banner Executive', 'Tech Terminal', 'Swiss Minimal',
+  'Photo Luxury', 'Gradient Hero', 'Swiss Pure', 'Scandi Light', 'Modern Grid',
+  'Academic Formal', 'Timeline Progress', 'Centered Elegance', 'Bold Creative', 'Marketing Orange',
+  'Design Portfolio', 'Startup Energy', 'Agency Bold', 'Freelance Pro', 'Corporate Navy',
+  'Finance Professional', 'Healthcare Modern', 'Legal Traditional', 'Consulting Clean', 'Data Science'
+];
+
+const getModernDesign = (index, palette) => {
+  // Return basic design info for preview rendering
+  return {
+    name: modernTemplateNames[index] || `Modern ${index + 1}`,
+    id: index + 1
+  };
+};
 
 // Demo data pool for Modern previews with realistic professional profiles
 const demoPool = [
