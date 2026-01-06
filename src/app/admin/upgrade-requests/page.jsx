@@ -369,8 +369,3 @@ export default function UpgradeRequestsAdmin() {
     </div>
   );
 }
-        </ul>
-      </div>
-    </div>
-  );
-}
