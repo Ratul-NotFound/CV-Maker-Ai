@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
+import { requireAuth, assertAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const { decodedToken } = await requireAuth(request);
+    assertAdmin(decodedToken);
     // Get all users
     const usersSnapshot = await db.collection('users').get();
     const users = [];
@@ -55,6 +58,12 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error fetching all stats:', error);
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error.message === 'Forbidden') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
     return NextResponse.json({
       success: false,
       error: error.message,
@@ -63,7 +72,8 @@ export async function GET() {
       freeUsers: 0,
       totalGenerations: 0,
       activeToday: 0,
-      lastUpdated: new Date().toISOString()
-    }, { status: 500 });
+      lastUpdated: new Date().toISOString(),
+      users: []
+    }, { status: 200 });
   }
 }

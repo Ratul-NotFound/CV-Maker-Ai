@@ -10,7 +10,8 @@ import {
   Rocket, Target, Brain, Lock, Award, Star, ChevronRight,
   Shield, PieChart, Users2
 } from 'lucide-react';
-import dynamic from 'next/dynamic';import { useFetch } from '@/lib/useFetch';import Footer from '@/components/Footer';
+import dynamic from 'next/dynamic';
+import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 
 const NeuralNetworkBackground = dynamic(() => import('@/components/NeuralNetworkBackground'), {
@@ -324,7 +325,7 @@ export default function Home() {
                 className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 hover:border-blue-500/30 hover:bg-white/10 transition-all duration-300 hover:-translate-y-2"
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-20 rounded-2xl transition-opacity duration-300`}></div>
-                <div className={`relative w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-6 ${feature.iconColor}`}>
+                <div className={`relative w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-4 ${feature.iconColor}`}>
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3 relative">{feature.title}</h3>

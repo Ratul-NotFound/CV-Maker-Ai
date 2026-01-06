@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { FileText, Users, Crown, TrendingUp, Globe, Clock, BarChart3, Download, Activity, Zap, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
 import Footer from '@/components/Footer';
-import Navbar from '@/components/Navbar';
 
 export default function PublicStatsPage() {
   const [stats, setStats] = useState({
@@ -20,77 +19,90 @@ export default function PublicStatsPage() {
   const [apiError, setApiError] = useState('');
   const [chartStartIndex, setChartStartIndex] = useState(0);
 
-  useEffect(() => {
-    // Load stats and daily stats together to prevent race conditions
-    const loadAllStats = async () => {
-      try {
-        setLoading(true);
-        setApiError('');
-        
-        // Fetch both in parallel
-        const [statsRes, dailyRes] = await Promise.all([
-          fetch('/api/stats/public'),
-          fetch('/api/stats/daily')
-        ]);
-        
-        // Handle stats response
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          if (statsData.success) {
-            setStats({
-              totalGenerations: statsData.totalGenerations || 0,
-              totalUsers: statsData.totalUsers || 0,
-              proUsers: statsData.proUsers || 0,
-              activeToday: statsData.activeToday || 0,
-              lastUpdated: statsData.lastUpdated || new Date().toISOString()
-            });
-            setIsSampleData(false);
-          } else {
-            throw new Error(statsData.error || 'Failed to load stats');
-          }
-        } else {
-          throw new Error(`API Error: ${statsRes.status}`);
-        }
-        
-        // Handle daily stats response
-        if (dailyRes.ok) {
-          const dailyData = await dailyRes.json();
-          if (dailyData.success) {
-            setDailyStats(dailyData.dailyStats || []);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading stats:', error);
-        setApiError(error.message);
-        // Set fallback data
-        setStats({
-          totalGenerations: 5890,
-          totalUsers: 1250,
-          proUsers: 342,
-          activeToday: 45,
-          lastUpdated: new Date().toISOString()
-        });
-        setIsSampleData(true);
-      } finally {
-        setLoading(false);
+  const loadAllStats = useCallback(async (forceFresh = false) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      setLoading(true);
+      setApiError('');
+      setIsSampleData(false);
+
+      const [statsRes, dailyRes] = await Promise.all([
+        fetch(`/api/stats/public${forceFresh ? '?fresh=1' : ''}`, { cache: 'no-store', signal: controller.signal }),
+        fetch('/api/stats/daily', { cache: 'no-store', signal: controller.signal })
+      ]);
+
+      if (!statsRes.ok) {
+        throw new Error(`Stats API error ${statsRes.status}`);
       }
-    };
-    
-    loadAllStats();
+
+      const statsData = await statsRes.json();
+      setStats({
+        totalGenerations: statsData.totalGenerations || 0,
+        totalUsers: statsData.totalUsers || 0,
+        proUsers: statsData.proUsers || 0,
+        activeToday: statsData.activeToday || 0,
+        lastUpdated: statsData.lastUpdated || new Date().toISOString()
+      });
+      if (statsData.error) setIsSampleData(true);
+
+      if (dailyRes.ok) {
+        const dailyData = await dailyRes.json();
+        setDailyStats(dailyData.dailyStats || []);
+        if (dailyData.isSample) setIsSampleData(true);
+      } else {
+        throw new Error(`Daily stats error ${dailyRes.status}`);
+      }
+    } catch (error) {
+      console.error('Error loading stats:', error);
+      setApiError(error.message);
+      setStats({
+        totalGenerations: 5890,
+        totalUsers: 1250,
+        proUsers: 342,
+        activeToday: 45,
+        lastUpdated: new Date().toISOString()
+      });
+      setDailyStats(generateSampleDailyStats());
+      setIsSampleData(true);
+    } finally {
+      clearTimeout(timeoutId);
+      setLoading(false);
+    }
   }, []);
 
-  // Old functions kept for backwards compatibility if needed
-  // But now combined into loadAllStats above
-  
-  const loadStats = async () => {
-    // This function is now deprecated - use loadAllStats instead
-    console.warn('loadStats() is deprecated, use the main useEffect hook');
-  };
+  useEffect(() => {
+    loadAllStats(false);
+  }, [loadAllStats]);
+
+  useEffect(() => {
+    if (!dailyStats.length) {
+      setChartStartIndex(0);
+      return;
+    }
+    const maxStart = Math.max(dailyStats.length - 7, 0);
+    setChartStartIndex(prev => Math.min(prev, maxStart));
+  }, [dailyStats]);
 
   const formatNumber = (num) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
     return num.toString();
+  };
+
+  const generateSampleDailyStats = () => {
+    const sampleStats = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toISOString().split('T')[0];
+      sampleStats.push({
+        date: dateStr,
+        generations: Math.floor(Math.random() * 50) + 20
+      });
+    }
+    return sampleStats;
   };
 
   const handleChartScroll = (direction) => {
@@ -113,7 +125,7 @@ export default function PublicStatsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 pt-24 md:pt-28 pb-8 md:pb-12 px-3 sm:px-4 relative z-0">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 pt-20 md:pt-24 pb-8 px-3 sm:px-4 relative z-0">
       <NeuralNetworkBackground />
       
       <div className="max-w-6xl mx-auto relative z-10">
@@ -130,10 +142,7 @@ export default function PublicStatsPage() {
           </p>
           <div className="mt-3 md:mt-4 flex flex-wrap justify-center gap-2 md:gap-4">
             <button 
-              onClick={() => {
-                loadStats();
-                loadDailyStats();
-              }}
+              onClick={() => loadAllStats(true)}
               disabled={loading}
               className="px-3 py-1.5 md:px-4 md:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs md:text-sm font-medium flex items-center gap-1 md:gap-2 transition-colors disabled:opacity-50"
             >
@@ -356,16 +365,7 @@ export default function PublicStatsPage() {
         </div>
 
         {/* Footer */}
-        <footer className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-white/5 text-center">
-          <p className="text-white/30 text-xs md:text-sm mb-3 md:mb-4">
-            Updated in real-time • Last: {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-            {isSampleData && ' • Using sample data'}
-          </p>
-          <div className="flex flex-col md:flex-row justify-between items-center text-xs md:text-sm text-white/30 font-medium">
-            <p className="mb-2 md:mb-0">© 2025 CV Maker AI  |  All rights reserved  |  Developed by Mahmud Hasan Ratul</p>
-            
-          </div>
-        </footer>
+        <Footer />
       </div>
     </div>
   );

@@ -135,18 +135,36 @@ export const getCVById = async (cvId) => {
     }
 
     const cvData = cvDoc.data();
-    const decompressedHtml = decompressCV(cvData.compressedHtml);
+    
+    // Try to get HTML content - prefer stored htmlContent over compressed
+    let htmlContent = cvData.htmlContent;
+    
+    if (!htmlContent && cvData.compressedHtml) {
+      try {
+        htmlContent = decompressCV(cvData.compressedHtml);
+      } catch (decompressError) {
+        console.error('Failed to decompress CV:', decompressError);
+        // If decompression fails, try using compressed as-is
+        htmlContent = cvData.compressedHtml;
+      }
+    }
 
-    // Update metadata asynchronously
+    if (!htmlContent) {
+      throw new Error('CV content not available');
+    }
+
+    // Update metadata asynchronously (don't wait)
     updateDoc(cvRef, {
       lastAccessed: new Date().toISOString(),
       downloadCount: increment(1)
-    }).catch(err => console.error('Error updating CV:', err));
+    }).catch(err => console.error('Error updating CV metadata:', err));
 
     return {
       id: cvDoc.id,
       ...cvData,
-      htmlContent: decompressedHtml
+      htmlContent: htmlContent,
+      pdfBase64: cvData.pdfBase64 || null, // Include PDF if available
+      compressedHtml: undefined // Don't expose compressed data
     };
   } catch (error) {
     console.error('Error fetching CV:', error);
@@ -182,6 +200,10 @@ export const deleteSavedCV = async (cvId, userId) => {
 // Sync saved CV count with actual database count
 export const syncSavedCVCount = async (userId) => {
   try {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    
     // Get actual count from database
     const q = query(
       collection(db, 'cvStorage'),
@@ -192,15 +214,23 @@ export const syncSavedCVCount = async (userId) => {
     
     // Update user document with correct count
     const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      console.warn(`User ${userId} not found for CV sync`);
+      return { success: false, error: 'User not found', count: actualCount };
+    }
+    
     await updateDoc(userRef, {
-      savedCVs: actualCount
+      savedCVs: actualCount,
+      lastSyncedAt: new Date().toISOString()
     });
     
     console.log(`Synced CV count for user ${userId}: ${actualCount}`);
     return { success: true, count: actualCount };
   } catch (error) {
     console.error('Error syncing CV count:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message, count: 0 };
   }
 };
 
@@ -232,7 +262,7 @@ export async function upgradeUserToPro(userId) {
   }
 }
 
-export async function saveCVForm(uid, formData, cvType, industry, cvTitle = 'My CV') {
+export async function saveCVForm(uid, formData, cvType, industry, cvTitle = 'My CV', templateId = 1) {
   try {
     const formRef = doc(db, 'cvForms', uid);
     await setDoc(formRef, {
@@ -241,6 +271,7 @@ export async function saveCVForm(uid, formData, cvType, industry, cvTitle = 'My 
       cvType,
       industry,
       cvTitle,
+      templateId,
       updatedAt: new Date().toISOString(),
       version: '1.0'
     }, { merge: true });

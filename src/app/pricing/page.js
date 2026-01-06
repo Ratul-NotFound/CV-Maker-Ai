@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import PricingModal from '@/components/PricingModal';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
 
 export default function PricingPage() {
   const router = useRouter();
@@ -24,14 +25,14 @@ export default function PricingPage() {
 
   if (loading) {
     return (
-      <div className="w-full h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-white border-t-purple-500 rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900">
       <Navbar />
       
       {showModal && (

@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
+import { requireAuth, assertAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const { decodedToken } = await requireAuth(request);
+    assertAdmin(decodedToken);
     // Check if admin (you can implement proper admin auth later)
     // For now, we'll just return all requests
     
@@ -19,6 +22,12 @@ export async function GET() {
     return NextResponse.json({ success: true, requests });
   } catch (error) {
     console.error('Error fetching upgrade requests:', error);
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+    if (error.message === 'Forbidden') {
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
+    }
     return NextResponse.json({ 
       success: false, 
       message: 'Internal server error' 
@@ -28,6 +37,8 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const { decodedToken } = await requireAuth(request);
+    assertAdmin(decodedToken);
     const { requestId, action, userId, reason } = await request.json();
 
     if (!requestId || !action) {
@@ -90,6 +101,12 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error processing upgrade request:', error);
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+    if (error.message === 'Forbidden') {
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
+    }
     return NextResponse.json({ 
       success: false, 
       message: 'Internal server error' 

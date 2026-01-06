@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "src/app/api/generate-cv/route.js": {
+      "maxDuration": 120,
+      "memory": 3008
+    },
+    "src/app/api/cv/download/route.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
+  "buildCommand": "npm run build"
+}

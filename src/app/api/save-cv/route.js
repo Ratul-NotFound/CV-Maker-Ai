@@ -5,11 +5,13 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { validateInput } from '@/lib/validation';
 import logger from '@/lib/logger';
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit';
+import { requireAuth, assertSameUserOrAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
+    const { decodedToken } = await requireAuth(request);
     // Rate limiting
     const clientIP = getClientIP(request);
     if (!checkRateLimit(clientIP, 20, 60000)) { // 20 requests per minute
@@ -20,7 +22,8 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { userId, htmlContent, title, industry, template, formData } = body;
+    const { userId, htmlContent, title, industry, template, formData, pdfBase64, templateId } = body;
+    assertSameUserOrAdmin(decodedToken, userId);
     
     // Input validation
     if (!userId || !htmlContent) {
@@ -65,15 +68,19 @@ export async function POST(request) {
       userId,
       title: (title || 'My CV').substring(0, 200),
       compressedHtml,
+      htmlContent: htmlContent, // Store uncompressed for easy access
+      pdfBase64: pdfBase64 || null, // Store PDF if provided
       originalSize: htmlContent.length,
       compressedSize: compressedHtml.length,
       industry: (industry || 'general').substring(0, 50),
       template: (template || 'modern').substring(0, 50),
+      templateId: templateId || 1,
       createdAt: new Date().toISOString(),
       lastAccessed: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       downloadCount: 0,
       isPublic: false,
-      formData: formData || {} // Store original form data for editing
+      formData: formData || null // Store original form data for editing
     };
     
     await cvRef.set(cvData);
@@ -93,6 +100,12 @@ export async function POST(request) {
     });
     
   } catch (error) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error.message === 'Forbidden') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
     if (error.message && error.message.includes('must be')) {
       // Validation error
       return NextResponse.json({

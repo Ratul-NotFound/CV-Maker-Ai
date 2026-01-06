@@ -1,46 +1,108 @@
 'use client';
-import { useState, useRef } from 'react';
-import { Download, Printer, Copy, Check, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Download, Printer, Copy, Check, Loader2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-export default function CVPreview({ cvHtml }) {
+export default function CVPreview({ cvHtml, cvTitle }) {
   const [downloading, setDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const contentRef = useRef(null);
+  const [zoom, setZoom] = useState(1);
+  const [autoScale, setAutoScale] = useState(true);
+  const iframeRef = useRef(null);
+  const containerRef = useRef(null);
 
-  const handleDownloadPDF = async () => {
+  // Auto-scale based on screen size
+  useEffect(() => {
+    if (!autoScale || !containerRef.current) return;
+
+    const updateScale = () => {
+      const containerWidth = containerRef.current?.offsetWidth || 800;
+      const a4WidthMm = 210;
+      const mmToPx = 3.7795275591; // 1mm = 3.78px at 96 DPI
+      const a4WidthPx = a4WidthMm * mmToPx;
+      
+      // Calculate scale to fit container
+      const calculatedScale = Math.min((containerWidth - 48) / a4WidthPx, 1);
+      setZoom(calculatedScale);
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [autoScale]);
+
+  const handleZoomIn = () => {
+    setAutoScale(false);
+    setZoom(prev => Math.min(prev + 0.1, 2));
+  };
+
+  const handleZoomOut = () => {
+    setAutoScale(false);
+    setZoom(prev => Math.max(prev - 0.1, 0.3));
+  };
+
+  const handleFitToScreen = () => {
+    setAutoScale(true);
+  };
+
+  const handleDownloadPDF = async (cvTitle = 'CV') => {
     setDownloading(true);
     try {
-      const element = contentRef.current;
-      
-      // Use requestIdleCallback for non-blocking operation
-      if ('requestIdleCallback' in window) {
-        await new Promise(resolve => requestIdleCallback(resolve));
+      // Get the iframe element
+      const iframe = iframeRef.current;
+      if (!iframe) {
+        throw new Error('CV content not available');
+      }
+
+      // Wait for iframe to be fully loaded
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Get the body element from iframe
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) {
+        throw new Error('Cannot access iframe content');
+      }
+
+      const element = iframeDoc.body;
+      if (!element) {
+        throw new Error('CV body not found');
       }
       
+      console.log('Generating PDF from element:', element);
+      
+      // A4 dimensions: 210mm × 297mm at 96 DPI = 794 × 1123 pixels
       const canvas = await html2canvas(element, {
-        scale: 1, // Further reduced for speed
+        scale: 2, // High quality for professional output
+        width: 794, // A4 width in pixels (210mm at 96 DPI)
         useCORS: true,
         backgroundColor: '#ffffff',
-        logging: false,
+        logging: true,
         imageTimeout: 0,
         removeContainer: true,
-        allowTaint: true, // Allow tainted canvas
-        proxy: null // Disable proxy
+        allowTaint: true,
+        windowWidth: 794
       });
 
-      // Use lower quality JPEG for faster compression
-      const imgData = canvas.toDataURL('image/jpeg', 0.7); // Reduced from 0.85
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = 210;
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      console.log('Canvas created, size:', canvas.width, 'x', canvas.height);
+
+      // Use high quality PNG for professional CVs
+      const imgData = canvas.toDataURL('image/png', 1.0);
+      const pdf = new jsPDF('p', 'mm', 'a4'); // Portrait, millimeters, A4
+      const pdfWidth = 210; // A4 width in mm
+      const pdfHeight = 297; // A4 height in mm
       
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`CV-${Date.now()}.pdf`);
+      // Add image to fit exactly on A4 page
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+      
+      // Clean filename from CV title
+      const cleanTitle = cvTitle.replace(/[^a-zA-Z0-9\s-_]/g, '').replace(/\s+/g, '_');
+      pdf.save(`${cleanTitle || 'CV'}.pdf`);
+      
+      console.log('PDF saved successfully');
     } catch (e) { 
       console.error('Download failed:', e);
-      alert('Download failed'); 
+      alert('Download failed: ' + e.message); 
     } 
     finally { setDownloading(false); }
   };
@@ -48,43 +110,150 @@ export default function CVPreview({ cvHtml }) {
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
-      <html><head><title>CV</title></head>
-      <body style="margin:0;padding:0;">${cvHtml}</body></html>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>CV - Print</title>
+        <style>
+          @page { size: A4; margin: 0; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          html, body {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0;
+            padding: 0;
+            background: white;
+          }
+          @media print {
+            html, body { width: 210mm; height: 297mm; }
+          }
+        </style>
+      </head>
+      <body>${cvHtml}</body>
+      </html>
     `);
     printWindow.document.close();
-    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+    setTimeout(() => { 
+      printWindow.print();
+      setTimeout(() => printWindow.close(), 500);
+    }, 500);
   };
 
   return (
-    <div className="w-full mx-auto px-2 sm:px-4 lg:px-6 mt-4 sm:mt-6">
-      <div className="bg-slate-900/95 backdrop-blur-xl rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white/10 shadow-2xl">
+    <div className="w-full mx-auto px-0 sm:px-2 lg:px-4 mt-4 sm:mt-6">
+      <div className="bg-slate-900/95 backdrop-blur-xl rounded-none sm:rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 border-0 sm:border border-white/10 shadow-2xl">
         
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4 sm:mb-6">
-          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">Your CV Preview</h2>
-          <div className="flex gap-2 w-full sm:w-auto">
-             <button 
-               onClick={handlePrint} 
-               className="flex-1 sm:flex-none px-4 py-2.5 text-sm bg-blue-500/20 text-blue-300 rounded-lg flex gap-2 items-center justify-center hover:bg-blue-500/30 transition-colors active:scale-95 touch-manipulation"
-             >
-               <Printer size={18}/>
-               <span>Print</span>
-             </button>
-             <button 
-               onClick={handleDownloadPDF} 
-               disabled={downloading} 
-               className="flex-1 sm:flex-none px-4 py-2.5 text-sm bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg flex gap-2 items-center justify-center hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 active:scale-95 shadow-lg touch-manipulation"
-             >
-                {downloading ? <Loader2 size={18} className="animate-spin"/> : <Download size={18}/>}
-                <span>{downloading ? 'Generating...' : 'Download PDF'}</span>
-             </button>
+        {/* Header with controls */}
+        <div className="flex flex-col gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <h2 className="text-base sm:text-lg md:text-xl font-bold text-white">Your CV Preview</h2>
+            <div className="flex gap-2 w-full sm:w-auto">
+               <button 
+                 onClick={handlePrint} 
+                 className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm bg-blue-500/20 text-blue-300 rounded-lg flex gap-2 items-center justify-center hover:bg-blue-500/30 transition-colors active:scale-95 touch-manipulation"
+               >
+                 <Printer size={16} className="sm:w-[18px] sm:h-[18px]"/>
+                 <span className="hidden sm:inline">Print</span>
+               </button>
+               <button 
+                 onClick={() => handleDownloadPDF(cvTitle)} 
+                 disabled={downloading} 
+                 className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg flex gap-2 items-center justify-center hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50 active:scale-95 shadow-lg touch-manipulation"
+               >
+                  {downloading ? <Loader2 size={16} className="sm:w-[18px] sm:h-[18px] animate-spin"/> : <Download size={16} className="sm:w-[18px] sm:h-[18px]"/>}
+                  <span>{downloading ? 'Generating...' : 'Download PDF'}</span>
+               </button>
+            </div>
+          </div>
+
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-2 bg-slate-800/50 p-2 rounded-lg">
+            <span className="text-xs text-white/60 mr-2">Zoom:</span>
+            <button
+              onClick={handleZoomOut}
+              className="p-1.5 bg-white/10 hover:bg-white/20 rounded transition-colors"
+              title="Zoom Out"
+            >
+              <ZoomOut size={16} className="text-white" />
+            </button>
+            <span className="text-sm text-white font-mono min-w-[50px] text-center">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              onClick={handleZoomIn}
+              className="p-1.5 bg-white/10 hover:bg-white/20 rounded transition-colors"
+              title="Zoom In"
+            >
+              <ZoomIn size={16} className="text-white" />
+            </button>
+            <button
+              onClick={handleFitToScreen}
+              className={`p-1.5 rounded transition-colors ml-2 ${
+                autoScale ? 'bg-blue-500/30 text-blue-300' : 'bg-white/10 hover:bg-white/20 text-white'
+              }`}
+              title="Fit to Screen"
+            >
+              <Maximize2 size={16} />
+            </button>
+            <span className="text-xs text-white/40 ml-auto hidden sm:inline">
+              {autoScale ? 'Auto-fit enabled' : 'Manual zoom'}
+            </span>
           </div>
         </div>
 
-        {/* PREVIEW CONTAINER - Mobile Optimized */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-3 sm:p-6 rounded-lg sm:rounded-xl overflow-x-auto overflow-y-auto max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-180px)] custom-scrollbar">
-            <div className="min-w-[280px] w-full max-w-[210mm] mx-auto bg-white shadow-2xl" style={{ aspectRatio: '210/297' }} ref={contentRef}>
-                {/* Render HTML safely */}
-                <div className="w-full h-full overflow-hidden" dangerouslySetInnerHTML={{ __html: cvHtml }} />
+        {/* PREVIEW CONTAINER - Responsive with zoom */}
+        <div 
+          ref={containerRef}
+          className="bg-gradient-to-br from-slate-800 to-slate-900 p-2 sm:p-4 lg:p-6 rounded-lg overflow-auto max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-240px)] custom-scrollbar"
+        >
+            <div 
+              className="mx-auto bg-white shadow-2xl transition-transform duration-300 ease-out" 
+              style={{ 
+                width: '210mm',
+                minHeight: '297mm',
+                margin: '0 auto',
+                transform: `scale(${zoom})`,
+                transformOrigin: 'top center'
+              }} 
+            >
+                {/* Render HTML safely - A4 dimensions enforced with proper scaling */}
+                <iframe
+                  ref={iframeRef}
+                  srcDoc={`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <meta charset="UTF-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        html, body {
+                          width: 210mm;
+                          min-height: 297mm;
+                          margin: 0;
+                          padding: 0;
+                          background: white;
+                          overflow-x: hidden;
+                        }
+                        @media print {
+                          @page { size: A4; margin: 0; }
+                          html, body { width: 210mm; height: 297mm; }
+                        }
+                      </style>
+                    </head>
+                    <body>${cvHtml}</body>
+                    </html>
+                  `}
+                  style={{
+                    width: '210mm',
+                    minHeight: '297mm',
+                    border: 'none',
+                    display: 'block',
+                    backgroundColor: 'white'
+                  }}
+                  title="CV Preview"
+                />
             </div>
         </div>
 

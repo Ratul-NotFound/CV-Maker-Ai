@@ -1,9 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { Check, X, Clock, Search, Filter, Mail, User, DollarSign, CreditCard, Calendar, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
+import Footer from '@/components/Footer';
+import Navbar from '@/components/Navbar';
 
 export default function UpgradeRequestsAdmin() {
+  const router = useRouter();
+  const { user, userData, loading: authLoading } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -12,7 +19,10 @@ export default function UpgradeRequestsAdmin() {
 
   const fetchRequests = async () => {
     try {
-      const response = await fetch('/api/admin/upgrade-requests');
+      const idToken = user ? await user.getIdToken() : null;
+      const response = await fetch('/api/admin/upgrade-requests', {
+        headers: idToken ? { Authorization: `Bearer ${idToken}` } : {}
+      });
       const data = await response.json();
       if (data.success) {
         setRequests(data.requests);
@@ -29,9 +39,10 @@ export default function UpgradeRequestsAdmin() {
 
     setProcessing(true);
     try {
+      const idToken = user ? await user.getIdToken() : null;
       const response = await fetch('/api/admin/upgrade-requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
         body: JSON.stringify({ 
           requestId, 
           userId,
@@ -60,9 +71,10 @@ export default function UpgradeRequestsAdmin() {
 
     setProcessing(true);
     try {
+      const idToken = user ? await user.getIdToken() : null;
       const response = await fetch('/api/admin/upgrade-requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}) },
         body: JSON.stringify({ 
           requestId, 
           action: 'reject',
@@ -113,8 +125,13 @@ export default function UpgradeRequestsAdmin() {
   };
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user || userData?.role !== 'admin') {
+      router.push('/admin/login');
+      return;
+    }
     fetchRequests();
-  }, []);
+  }, [user, userData, authLoading]);
 
   const filteredRequests = requests.filter(request => {
     const matchesFilter = filter === 'all' || request.status === filter;
@@ -134,9 +151,12 @@ export default function UpgradeRequestsAdmin() {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-white mb-2">Upgrade Requests</h1>
-      <p className="text-slate-400 mb-6">Manage user upgrade requests and verify payments</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 relative z-0">
+      <NeuralNetworkBackground />
+      <Navbar />
+      <div className="p-6 pt-28 md:pt-32 max-w-7xl mx-auto relative z-10">
+        <h1 className="text-2xl font-bold text-white mb-2">Upgrade Requests</h1>
+        <p className="text-slate-400 mb-6">Manage user upgrade requests and verify payments</p>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -340,6 +360,15 @@ export default function UpgradeRequestsAdmin() {
           <li>Reject if transaction ID is invalid or already used</li>
           <li>User will automatically be upgraded to Pro upon approval</li>
           <li>Email notifications will be sent to users (coming soon)</li>
+        </ul>
+      </div>
+      </div>
+      
+      {/* Footer */}
+      <Footer />
+    </div>
+  );
+}
         </ul>
       </div>
     </div>

@@ -1,4 +1,40 @@
+# Dependencies
 node_modules
+package-lock.json
+
+# Next.js build output
 .next
+out
+dist
+build
+
+# Environment variables (DO NOT COMMIT)
 .env
 .env.local
+.env*.local
+
+# Firebase
+.firebase
+firebase-debug.log
+firestore-debug.log
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode
+.idea
+*.sublime-*
+
+# Temporary files
+*.tmp
+*.temp
+.cache

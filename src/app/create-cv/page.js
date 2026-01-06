@@ -45,8 +45,10 @@ function CreateCVContent() {
   const router = useRouter();
   const { user, userData, loading } = useAuth();
   const [generatedCV, setGeneratedCV] = useState(null);
+  const [generatedPDF, setGeneratedPDF] = useState(null);
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [cvTitle, setCvTitle] = useState('My Professional CV');
+  const [cvMetadata, setCvMetadata] = useState({ cvType: 'modern', industry: 'technology', formData: null, templateId: 1 });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -89,15 +91,22 @@ function CreateCVContent() {
     }
 
     try {
+      const idToken = await user.getIdToken();
       const response = await fetch('/api/save-cv', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`
+        },
         body: JSON.stringify({
           userId: user.uid,
           htmlContent: cvHtml,
+          pdfBase64: generatedPDF,
           title: title || cvTitle,
-          industry: 'technology', // You should get this from form
-          template: 'modern'      // You should get this from form
+          industry: cvMetadata.industry,
+          template: cvMetadata.cvType,
+          templateId: cvMetadata.templateId,
+          formData: cvMetadata.formData
         })
       });
       const data = await response.json();
@@ -111,19 +120,7 @@ function CreateCVContent() {
     }
   };
 
-  const handleDownloadCV = () => {
-    if (!generatedCV) return;
-    
-    const blob = new Blob([generatedCV], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${cvTitle.replace(/\s+/g, '_')}_CV.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  // Download is now handled by CVPreview component
 
   if (loading) {
     return (
@@ -137,11 +134,11 @@ function CreateCVContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 pt-24 md:pt-28 pb-8 md:pb-12 px-3 sm:px-4 relative z-0">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 pt-20 md:pt-24 pb-8 px-3 sm:px-4 relative z-0">
       <div className="max-w-6xl mx-auto">
         {/* Compact Header */}
-        <header className="mb-6 text-center">
-          <div className="flex items-center justify-between mb-4">
+        <header className="mb-4 text-center">
+          <div className="flex items-center justify-between mb-3">
             <button 
               onClick={() => router.back()}
               className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
@@ -199,9 +196,12 @@ function CreateCVContent() {
           <CVFormCompact 
             user={user}
             userData={userData}
-            onCVGenerated={(html) => {
+            onCVGenerated={(html, pdfBase64, title, metadata) => {
               if (handleTokenCheck()) {
                 setGeneratedCV(html);
+                setGeneratedPDF(pdfBase64);
+                if (title) setCvTitle(title);
+                if (metadata) setCvMetadata(metadata);
               }
             }}
             onUpgradeNeeded={() => {
@@ -227,19 +227,14 @@ function CreateCVContent() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
                 <div className="flex items-center gap-2 order-2 sm:order-1">
                   <button
-                    onClick={() => setGeneratedCV(null)}
+                    onClick={() => {
+                      setGeneratedCV(null);
+                      setGeneratedPDF(null);
+                    }}
                     className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-1 border border-white/10 text-sm"
                   >
                     <RotateCcw className="w-4 h-4" />
                     <span>New</span>
-                  </button>
-                  
-                  <button
-                    onClick={handleDownloadCV}
-                    className="flex-1 px-3 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-1 hover:opacity-90 text-sm"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Download</span>
                   </button>
                 </div>
                 
@@ -285,7 +280,7 @@ function CreateCVContent() {
             </div>
             
             {/* CV Preview */}
-            <CVPreview cvHtml={generatedCV} />
+            <CVPreview cvHtml={generatedCV} cvTitle={cvTitle} />
           </div>
         )}
 

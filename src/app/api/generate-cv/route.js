@@ -1,26 +1,16 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin'; 
 import * as admin from 'firebase-admin';
-import { generateCVHTML } from '@/lib/groq';
+import { generatePDF, compressPDF } from '@/lib/pdf-generator';
+import { generatePremiumCV } from './premium-templates';
+import { getTemplate, getMeta, listArchetypes } from './templates/registry';
+import { INDUSTRY_PALETTES } from './templates/palette';
+import { requireAuth, assertSameUserOrAdmin } from '@/lib/auth';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
-// ============================================================
-// 🎨 INDUSTRY COLOR PALETTES FOR DYNAMIC GENERATION
-// ============================================================
-const INDUSTRY_PALETTES = {
-  technology: { primary: '#2563eb', secondary: '#0f172a', accent: '#3b82f6', bg: '#f8fafc' },
-  finance: { primary: '#1e40af', secondary: '#0f172a', accent: '#374151', bg: '#ffffff' },
-  healthcare: { primary: '#059669', secondary: '#065f46', accent: '#10b981', bg: '#f0fdf4' },
-  education: { primary: '#7c3aed', secondary: '#5b21b6', accent: '#8b5cf6', bg: '#faf5ff' },
-  marketing: { primary: '#ec4899', secondary: '#be185d', accent: '#f472b6', bg: '#fdf2f8' },
-  engineering: { primary: '#ea580c', secondary: '#9a3412', accent: '#f97316', bg: '#fff7ed' },
-  law: { primary: '#6d28d9', secondary: '#4c1d95', accent: '#8b5cf6', bg: '#faf5ff' },
-  creative: { primary: '#db2777', secondary: '#9d174d', accent: '#ec4899', bg: '#fdf2f8' },
-  research: { primary: '#0d9488', secondary: '#115e59', accent: '#14b8a6', bg: '#f0fdfa' },
-  consulting: { primary: '#0e7490', secondary: '#155e75', accent: '#06b6d4', bg: '#ecfeff' }
-};
+// Industry palettes now imported from templates/palette for consistency
 
 // ============================================================
 // 📊 DATA VALIDATION & PROCESSING
@@ -65,147 +55,298 @@ async function getUserData(userId) {
 }
 
 // ============================================================
-// 📮 MAIN POST HANDLER
+// � DATA TRANSFORMATION
+// ============================================================
+function transformFormDataForTemplates(formData) {
+  // Flatten nested structure and combine skills
+  const personalInfo = formData.personalInfo || {};
+  const skills = formData.skills || {};
+  
+  // Keep skills separated by category for proper display
+  const skillsData = {
+    technical: skills.technical || [],
+    soft: skills.soft || [],
+    tools: skills.tools || []
+  };
+  
+  // Also provide flat array for compatibility
+  const allSkills = [
+    ...(skills.technical || []),
+    ...(skills.soft || []),
+    ...(skills.tools || [])
+  ];
+  
+  return {
+    // Personal info (flatten from nested object)
+    name: personalInfo.fullName || '',
+    email: personalInfo.email || '',
+    phone: personalInfo.phone || '',
+    professionalTitle: personalInfo.professionalTitle || '',
+    linkedin: personalInfo.linkedin || '',
+    website: personalInfo.website || '',
+    portfolio: personalInfo.website || '',
+    github: personalInfo.github || '',
+    orcid: personalInfo.orcid || '',
+    location: personalInfo.city && personalInfo.country ? `${personalInfo.city}, ${personalInfo.country}` : (personalInfo.city || personalInfo.country || ''),
+    address: personalInfo.address || '',
+    city: personalInfo.city || '',
+    country: personalInfo.country || '',
+    postalCode: personalInfo.postalCode || '',
+    nationality: personalInfo.nationality || '',
+    dob: personalInfo.dob || '',
+    summary: personalInfo.summary || '',
+    photoUrl: personalInfo.photoUrl || '',
+    includePhoto: personalInfo.includePhoto || false,
+    
+    // Arrays (pass through)
+    experience: formData.experience || [],
+    education: formData.education || [],
+    projects: formData.projects || [],
+    certifications: formData.certifications || [],
+    publications: formData.publications || [],
+    languages: formData.languages || [],
+    
+    // Categorized skills
+    skillsData: skillsData,
+    
+    // Skills (flattened)
+    skills: allSkills,
+    skillsGrouped: skills // Keep grouped version for templates that need it
+  };
+}
+
+// ============================================================
+// �📮 MAIN POST HANDLER
 // ============================================================
 export async function POST(request) {
-  try {
-    const { formData, cvType = 'modern', industry = 'technology', userId, save = false, cvTitle } = await request.json();
-
-    // 1. VALIDATE INPUTS
-    validateFormData(formData);
-    
-    if (!userId) {
-      return NextResponse.json({ success: false, message: 'User ID required' }, { status: 400 });
-    }
-
-    // 2. GET USER DATA
-    const { ref: userRef, data: userData } = await getUserData(userId);
-
-    // 3. CHECK TOKENS (Free users only)
-    if (!userData.isPro && userData.tokens < 1) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Insufficient tokens. Upgrade to Pro or purchase tokens.',
-        tokensRemaining: 0
-      }, { status: 402 });
-    }
-
-    // 4. GENERATE CV WITH GROQ AI
-    if (process.env.DEBUG) console.log(`[API] Generating ${cvType} CV for industry: ${industry}`);
-    const cvHtml = await generateCVHTML(formData, cvType, industry);
-
-    if (!cvHtml || cvHtml.length < 500) {
-      throw new Error('CV generation produced invalid output');
-    }
-
-    // 5. SAVE CV TO FIRESTORE (Pro users)
-    let cvId = null;
-    if (userData.isPro && save) {
-      try {
-        const cvRef = db.collection('cvStorage').doc();
-        cvId = cvRef.id;
-        
-        await cvRef.set({
-          id: cvRef.id,
-          userId,
-          title: cvTitle || `${cvType.charAt(0).toUpperCase() + cvType.slice(1)} CV`,
-          compressedHtml: compressCV(cvHtml),
-          originalSize: cvHtml.length,
-          industry: industry || 'technology',
-          template: cvType,
-          createdAt: new Date().toISOString(),
-          lastAccessed: new Date().toISOString(),
-          downloadCount: 0,
-          isPublic: false,
-          formData: formData
-        });
-
-        await userRef.update({
-          savedCVs: admin.firestore.FieldValue.increment(1),
-          lastSavedCV: new Date().toISOString()
-        });
-
-        console.log(`[SaveCV]: CV saved successfully with ID: ${cvId}`);
-      } catch (error) {
-        console.error('Error saving CV:', error);
-      }
-    }
-
-    // 6. DEDUCT TOKENS (Free users)
-    if (!userData.isPro) {
-      await userRef.update({ 
-        tokens: admin.firestore.FieldValue.increment(-1),
-        lastGenerated: new Date().toISOString()
-      });
-    }
-
-    // 7. LOG GENERATION
+  console.log('[API] CV GENERATION STARTED');
+  const startTime = Date.now();
+  
+  // Add 60-second timeout for entire operation (PDF generation can take 20-30s)
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Request timeout - operation took too long')), 60000)
+  );
+  
+  const mainOperation = async () => {
     try {
-      await db.collection('generations').add({
-        userId,
-        cvType,
-        industry,
-        timestamp: new Date().toISOString(),
-        tokensUsed: userData.isPro ? 0 : 1,
-        saved: save && userData.isPro,
-        cvId: cvId || null,
-        method: 'template-based'
-      });
-    } catch (logError) {
-      console.error('Logging error:', logError);
-    }
+      // Parse JSON body first (before auth, as auth only reads headers)
+      console.log('[API] Step 1: Parsing request body');
+      const { formData, cvType = 'modern', industry = 'technology', userId, save = false, cvTitle, templateId } = await request.json();
+      console.log('[API] Step 1 Complete: Request parsed');
+      
+      // Then authenticate
+      const { decodedToken } = await requireAuth(request);
+      console.log('[API] Step 1: Authentication passed');
 
-    // 8. RETURN RESPONSE
-    return NextResponse.json({ 
-      success: true,
-      cvHtml,
-      cvId,
-      cvType,
-      industry,
-      saved: save && userData.isPro,
-      tokensRemaining: userData.isPro ? 'unlimited' : Math.max(0, userData.tokens - 1),
-      message: 'Professional CV generated successfully'
-    });
+      // 1. VALIDATE INPUTS
+      console.log('[API] Step 2: Validating inputs');
+      validateFormData(formData);
+      
+      if (!userId) {
+        console.log('[API] Error: Missing userId');
+        return NextResponse.json({ success: false, message: 'User ID required' }, { status: 400 });
+      }
 
-  } catch (error) {
-    console.error('[API Error]', error);    
-    // Return appropriate status codes based on error type
-    if (error.message.includes('not found')) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'User or resource not found' 
-      }, { status: 404 });
-    }
-    
-    if (error.message.includes('Insufficient tokens')) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Insufficient tokens' 
-      }, { status: 402 });
-    }
-    
-    if (error.message.includes('exceeds maximum')) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Data exceeds maximum size limit' 
-      }, { status: 413 });
-    }
+      assertSameUserOrAdmin(decodedToken, userId);
+
+      // 2. GET USER DATA
+      console.log('[API] Step 3: Fetching user data');
+      const { ref: userRef, data: userData } = await getUserData(userId);
+      console.log('[API] Step 3 Complete: User found');
+
+      // 3. CHECK TOKENS (Free users only)
+      console.log('[API] Step 4: Checking tokens');
+      const tokens = Number(userData.tokens ?? 0);
+      if (!userData.isPro && (!Number.isFinite(tokens) || tokens < 1)) {
         return NextResponse.json({ 
+          success: false, 
+          message: 'Insufficient tokens. Upgrade to Pro or purchase tokens.',
+          tokensRemaining: 0
+        }, { status: 402 });
+      }
+
+      // 4. GENERATE CV WITH PREMIUM TEMPLATES (NO AI DEPENDENCY)
+      console.log('[API] Step 5: Generating CV template');
+      if (process.env.DEBUG) console.log(`[API] Generating ${cvType} CV for industry: ${industry}`);
+      
+      const archetype = (cvType || 'modern').toLowerCase();
+      const { render } = getTemplate(archetype);
+      const templateMeta = getMeta(archetype);
+      const templateIdNormalized = Math.max(1, Number(templateId) || 1);
+
+      // Transform nested formData to flat structure for templates
+      const transformedData = transformFormDataForTemplates(formData);
+      if (process.env.DEBUG) console.log('[API] Data transformed for template:', { 
+        name: transformedData.name, 
+        hasPhoto: !!transformedData.photoUrl,
+        experienceCount: transformedData.experience?.length,
+        skillsCount: transformedData.skills?.length
+      });
+
+      let cvHtml = null;
+      let generationMethod = `archetype:${archetype}`;
+      
+      try {
+        cvHtml = render(transformedData, industry, templateIdNormalized);
+        console.log('[API] Step 5 Complete: Template generated');
+        if (process.env.DEBUG) console.log(`[API] Archetype ${archetype} template generated`);
+      } catch (templateError) {
+        console.error('[API] Template generation failed, falling back to premium:', templateError);
+        cvHtml = generatePremiumCV(transformedData, cvType, industry);
+        generationMethod = 'premium-template-fallback';
+      }
+
+      if (!cvHtml || cvHtml.length < 500) {
+        throw new Error('CV generation produced invalid output');
+      }
+
+      // 4.5 GENERATE PDF FROM HTML
+      let pdfBuffer = null;
+      let pdfBase64 = null;
+      try {
+        if (process.env.DEBUG) console.log('[API] Converting HTML to PDF...');
+        // Wrap PDF generation with 35-second timeout
+        const pdfPromise = generatePDF(cvHtml, cvTitle || `${cvType} CV`);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('PDF generation timeout')), 35000)
+        );
+        pdfBuffer = await Promise.race([pdfPromise, timeoutPromise]);
+        pdfBase64 = pdfBuffer.toString('base64');
+        if (process.env.DEBUG) console.log(`[API] PDF generated successfully (${pdfBuffer.length} bytes)`);
+      } catch (pdfError) {
+        console.error('[PDF Error] Failed to generate PDF:', pdfError.message);
+        pdfBase64 = null; // Allow HTML fallback
+      }
+
+      // 5. NOTE: CV saving is now handled via /api/save-cv endpoint
+      // This prevents duplicate saves and provides better error handling
+      let cvId = null;
+
+      // 6. DEDUCT TOKENS (Free users)
+      // Note: Tokens are deducted regardless of save status
+      if (!userData.isPro) {
+        await userRef.update({ 
+          tokens: admin.firestore.FieldValue.increment(-1),
+          lastGenerated: new Date().toISOString(),
+          totalGenerations: admin.firestore.FieldValue.increment(1)
+        });
+      } else {
+        // Track generations for Pro users too
+        await userRef.update({ 
+          lastGenerated: new Date().toISOString(),
+          totalGenerations: admin.firestore.FieldValue.increment(1)
+        });
+      }
+
+      // 7. LOG GENERATION
+      try {
+        await db.collection('generations').add({
+          userId,
+          cvType,
+          industry,
+          timestamp: new Date().toISOString(),
+          tokensUsed: userData.isPro ? 0 : 1,
+          saved: save && userData.isPro,
+          cvId: cvId || null,
+          method: generationMethod
+        });
+      } catch (logError) {
+        console.error('Logging error:', logError);
+      }
+
+      // 8. RETURN RESPONSE
+      const duration = Date.now() - startTime;
+      console.log('[API] CV GENERATION COMPLETED in ' + duration + 'ms');
+      return NextResponse.json({ 
+        success: true,
+        cvHtml,
+        pdfBase64: pdfBase64, // Include PDF in response
+        formData: formData, // Include form data for editing
+        cvType,
+        archetype,
+        templateMeta,
+        templateId: templateIdNormalized,
+        method: generationMethod,
+        industry,
+        tokensRemaining: userData.isPro ? 'unlimited' : Math.max(0, Number(userData.tokens ?? 0) - 1),
+        message: 'Professional CV generated successfully',
+        duration: duration
+      });
+
+    } catch (error) {
+      console.error('[API Error]', error);    
+      // Return appropriate status codes based on error type
+      if (error.message === 'Unauthorized') {
+        return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+      }
+      if (error.message === 'Forbidden') {
+        return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
+      }
+      if (error.message.includes('not found')) {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'User or resource not found' 
+        }, { status: 404 });
+      }
+      
+      if (error.message.includes('Insufficient tokens')) {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Insufficient tokens' 
+        }, { status: 402 });
+      }
+      
+      if (error.message.includes('exceeds maximum')) {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Data exceeds maximum size limit' 
+        }, { status: 413 });
+      }
+      
+      return NextResponse.json({ 
+        success: false, 
+        message: error.message || 'CV generation failed',
+        error: process.env.NODE_ENV === 'development' ? error.toString() : undefined
+      }, { status: 500 });
+    }
+  };
+  
+  // Execute with timeout
+  try {
+    return await Promise.race([mainOperation(), timeoutPromise]);
+  } catch (timeoutError) {
+    console.error('[API Timeout]', timeoutError);
+    return NextResponse.json({ 
       success: false, 
-      message: error.message || 'CV generation failed',
-      error: process.env.NODE_ENV === 'development' ? error.toString() : undefined
-    }, { status: 500 });
+      message: 'Request timeout. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? timeoutError.toString() : undefined
+    }, { status: 504 });
   }
 }
 
 // ============================================================
-// 🔄 GET HANDLER - RETRIEVE SAVED CV
+// 🔄 GET HANDLER - METADATA or RETRIEVE SAVED CV
 // ============================================================
 export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const cvId = searchParams.get('cvId');
+  const userId = searchParams.get('userId');
+
+  // If no cvId, serve metadata (public)
+  if (!cvId && !userId) {
+    return NextResponse.json({
+      success: true,
+      archetypes: listArchetypes(),
+      industries: Object.keys(INDUSTRY_PALETTES)
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, s-maxage=300'
+      }
+    });
+  }
+
   try {
-    const { searchParams } = new URL(request.url);
-    const cvId = searchParams.get('cvId');
-    const userId = searchParams.get('userId');
+    const { decodedToken } = await requireAuth(request);
 
     if (!cvId || !userId) {
       return NextResponse.json({ success: false, message: 'Missing parameters' }, { status: 400 });
@@ -218,10 +359,7 @@ export async function GET(request) {
     }
 
     const cvData = cvDoc.data();
-    
-    if (cvData.userId !== userId && !cvData.isPublic) {
-      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 403 });
-    }
+    assertSameUserOrAdmin(decodedToken, cvData.userId);
 
     // Decompress HTML
     let cvHtml = cvData.compressedHtml;
@@ -235,6 +373,12 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('CV Retrieval Error:', error);
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+    if (error.message === 'Forbidden') {
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
+    }
     return NextResponse.json({ success: false, message: 'Failed to retrieve CV' }, { status: 500 });
   }
 }

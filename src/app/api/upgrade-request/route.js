@@ -3,11 +3,13 @@ import { db } from '@/lib/firebase-admin';
 import { validateInput } from '@/lib/validation';
 import logger from '@/lib/logger';
 import { checkRateLimit, getClientIP } from '@/lib/rateLimit';
+import { requireAuth, assertSameUserOrAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
+    const { decodedToken } = await requireAuth(request);
     // Rate limiting - prevent spam
     const clientIP = getClientIP(request);
     if (!checkRateLimit(clientIP, 5, 3600000)) { // 5 requests per hour
@@ -19,6 +21,7 @@ export async function POST(request) {
 
     const body = await request.json();
     const { userId, userEmail, userName, transactionId, paymentMethod, amount, paymentNumber } = body;
+    assertSameUserOrAdmin(decodedToken, userId);
 
     // Input validation
     if (!userId || !transactionId || !userEmail) {
@@ -107,6 +110,12 @@ export async function POST(request) {
 
   } catch (error) {
     logger.error('UpgradeRequest', 'Failed to process upgrade request', error);
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+    if (error.message === 'Forbidden') {
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
+    }
     return NextResponse.json({ 
       success: false, 
       message: 'Failed to submit upgrade request. Please try again later.' 

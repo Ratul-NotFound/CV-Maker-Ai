@@ -2,13 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { Plus, FileText, User, Crown, Sparkles, Eye, Download, Calendar, Trash2, ExternalLink, BarChart3, Database, Shield, RefreshCw, ChevronRight } from 'lucide-react';
+import { Plus, FileText, User, Crown, Sparkles, Eye, Download, Calendar, Trash2, ExternalLink, BarChart3, Database, Shield, RefreshCw, ChevronRight, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
 import PricingModal from '@/components/PricingModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { getUserSavedCVs, getCVById, deleteSavedCV, syncSavedCVCount } from '@/lib/firestore';
+import { deleteSavedCV, getCVById } from '@/lib/firestore';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 
@@ -26,6 +26,39 @@ function DashboardContent() {
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState('');
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const [previewHtmls, setPreviewHtmls] = useState({});
+  const [previewLoading, setPreviewLoading] = useState({});
+  const [previewErrors, setPreviewErrors] = useState({});
+
+  // Cache duration: 10 minutes
+  const CACHE_DURATION = 10 * 60 * 1000;
+
+  // Load cached data on mount
+  useEffect(() => {
+    try {
+      const cachedCVs = localStorage.getItem('dashboard_cvs');
+          const cachedStats = localStorage.getItem('dashboard_stats');
+          const cachedTime = localStorage.getItem('dashboard_cache_time');
+          const cachedCount = localStorage.getItem('dashboard_cvs_count');
+      
+      if (cachedCVs && cachedStats && cachedTime) {
+        const cacheAge = Date.now() - parseInt(cachedTime);
+          if (cacheAge < CACHE_DURATION) {
+          // Use cached data if still valid
+          const cvs = JSON.parse(cachedCVs);
+          const stats = JSON.parse(cachedStats);
+          setSavedCVs(cvs);
+            setActualCVCount(cachedCount ? parseInt(cachedCount) : cvs.length);
+          setPublicStats(stats);
+          setLastFetchTime(parseInt(cachedTime));
+          console.log('💾 Loaded from cache (age:', Math.round(cacheAge / 1000), 'seconds)');
+        }
+      }
+    } catch (error) {
+      console.error('Cache load error:', error);
+    }
+  }, []);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -35,29 +68,104 @@ function DashboardContent() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (user) {
-      loadSavedCVs();
-      loadPublicStats();
-    }
-  }, [user, userData]);
+    if (!user || loading || userData === null) return;
 
-  const loadSavedCVs = async () => {
+    // Only fetch CVs once auth + userData are ready
+    loadSavedCVs();
+
+    // Stats can still respect cache
+    const cacheAge = Date.now() - lastFetchTime;
+    const shouldFetchStats = cacheAge > CACHE_DURATION || lastFetchTime === 0;
+    if (shouldFetchStats) {
+      console.log('🔄 Fetching fresh public stats...');
+      loadPublicStats();
+    } else {
+      console.log('✅ Using cached stats (age:', Math.round(cacheAge / 1000), 'seconds)');
+      setStatsLoading(false);
+    }
+  }, [user, userData, loading]);
+
+  const loadSavedCVs = async (retryCount = 0) => {
     if (!user) return;
     
     setLoadingCVs(true);
     try {
-      // Sync the count first to ensure accuracy
-      if (userData?.isPro) {
-        await syncSavedCVCount(user.uid);
+      // Use API endpoint instead of client-side query for better performance
+      if (userData?.isPro === true) {
+        // Fetch the CVs (no sync to reduce reads)
+        const idToken = await user.getIdToken();
+        const response = await fetch(`/api/cv/saved?userId=${user.uid}&limit=10&includeCount=1`, {
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${idToken}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Saved CVs API response:', data);
+          
+          if (data.success) {
+            const cvList = data.cvs || [];
+            let count = typeof data.totalCount === 'number' ? data.totalCount : cvList.length;
+
+            // If count wasn't provided, do a follow-up count sync to ensure accuracy
+            if (typeof data.totalCount !== 'number') {
+              try {
+                const countRes = await fetch(`/api/cv/saved?userId=${user.uid}`, {
+                  method: 'PUT',
+                  headers: { Authorization: `Bearer ${idToken}` }
+                });
+                if (countRes.ok) {
+                  const countData = await countRes.json();
+                  if (countData.success && typeof countData.count === 'number') {
+                    count = countData.count;
+                  }
+                }
+              } catch (countErr) {
+                console.warn('Count sync failed, using page length:', countErr);
+              }
+            }
+
+            setSavedCVs(cvList);
+            setActualCVCount(count);
+            
+            // Cache the data in localStorage
+            try {
+              localStorage.setItem('dashboard_cvs', JSON.stringify(cvList));
+              const now = Date.now();
+              setLastFetchTime(now);
+              localStorage.setItem('dashboard_cache_time', now.toString());
+              localStorage.setItem('dashboard_cvs_count', count.toString());
+            } catch (cacheError) {
+              console.warn('Failed to cache CVs:', cacheError);
+            }
+            
+            console.log(`✅ Loaded ${cvList.length} saved CVs`);
+            return;
+          } else {
+            console.error('API returned success=false:', data.error);
+          }
+        } else {
+          console.error('API request failed:', response.status, response.statusText);
+        }
+      } else {
+        console.log('User is not Pro, skipping CV load');
       }
       
-      const cvs = await getUserSavedCVs(user.uid);
-      setSavedCVs(cvs);
-      setActualCVCount(cvs.length);
-      
-      console.log(`Loaded ${cvs.length} saved CVs for user ${user.uid}`);
+      // Fallback to empty if not pro or request failed
+      if (userData && userData.isPro === false) {
+        setSavedCVs([]);
+        setActualCVCount(0);
+      }
     } catch (error) {
       console.error('Error loading saved CVs:', error);
+      
+      // Retry once on failure
+      if (retryCount < 1) {
+        console.log('Retrying loadSavedCVs...');
+        setTimeout(() => loadSavedCVs(retryCount + 1), 1000);
+        return;
+      }
+      
       setSavedCVs([]);
       setActualCVCount(0);
     } finally {
@@ -65,46 +173,114 @@ function DashboardContent() {
     }
   };
 
-  const loadPublicStats = async () => {
+  const loadPublicStats = async (forceFresh = false) => {
     setStatsLoading(true);
     try {
-      console.log('Fetching public stats...');
-      const response = await fetch('/api/stats/public');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+      
+      const response = await fetch(`/api/stats/public${forceFresh ? '?fresh=1' : ''}`, {
+        signal: controller.signal,
+        cache: 'no-store'
+      });
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
         const data = await response.json();
-        console.log('Public stats data:', data);
         
-        if (data.success) {
-          setPublicStats({
-            totalUsers: data.totalUsers || 0,
-            proUsers: data.proUsers || 0,
-            totalGenerations: data.totalGenerations || 0
-          });
-        } else {
-          setPublicStats({
-            totalUsers: data.totalUsers || 0,
-            proUsers: data.proUsers || 0,
-            totalGenerations: data.totalGenerations || 0
-          });
+        const stats = {
+          totalUsers: data.totalUsers || 0,
+          proUsers: data.proUsers || 0,
+          totalGenerations: data.totalGenerations || 0
+        };
+        
+        setPublicStats(stats);
+        
+        // Cache stats in localStorage
+        try {
+          localStorage.setItem('dashboard_stats', JSON.stringify(stats));
+        } catch (cacheError) {
+          console.warn('Failed to cache stats:', cacheError);
         }
-      } else {
-        console.error('Failed to fetch stats:', response.status);
       }
     } catch (error) {
-      console.error('Error loading public stats:', error);
+      if (error.name !== 'AbortError') {
+        console.error('Error loading public stats:', error);
+      }
+      // Keep existing stats on error
     } finally {
       setStatsLoading(false);
       setLastUpdated(new Date().toLocaleTimeString());
     }
   };
 
+  // Force refresh - clears cache and refetches
+  const forceRefresh = async () => {
+    console.log('🔄 Force refreshing data...');
+    localStorage.removeItem('dashboard_cvs');
+    localStorage.removeItem('dashboard_stats');
+    localStorage.removeItem('dashboard_cache_time');
+    localStorage.removeItem('dashboard_cvs_count');
+    setLastFetchTime(0);
+    await Promise.all([
+      loadSavedCVs(),
+      loadPublicStats(true)
+    ]);
+  };
+
+  const loadPreview = async (cvId) => {
+    if (!user || !userData?.isPro || !cvId || previewHtmls[cvId] || previewLoading[cvId]) return;
+
+    setPreviewErrors(prev => {
+      const next = { ...prev };
+      delete next[cvId];
+      return next;
+    });
+    setPreviewLoading(prev => ({ ...prev, [cvId]: true }));
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch(`/api/cv/view?cvId=${cvId}`, {
+        headers: { Authorization: `Bearer ${idToken}` }
+      });
+      const data = await response.json();
+
+      if (data.success && data.cv?.htmlContent) {
+        setPreviewHtmls(prev => ({ ...prev, [cvId]: data.cv.htmlContent }));
+      } else {
+        setPreviewErrors(prev => ({ ...prev, [cvId]: data.error || 'Preview unavailable' }));
+      }
+    } catch (error) {
+      console.error('Preview load failed:', error);
+      setPreviewErrors(prev => ({ ...prev, [cvId]: 'Network error while loading preview' }));
+    } finally {
+      setPreviewLoading(prev => {
+        const next = { ...prev };
+        delete next[cvId];
+        return next;
+      });
+    }
+  };
+
+  // Auto-load small previews for the first three saved CVs
+  useEffect(() => {
+    const topThree = savedCVs.slice(0, 3);
+    topThree.forEach(cv => loadPreview(cv.id));
+  }, [savedCVs]);
+
   const handleDeleteCV = async (cvId) => {
     if (confirm('Are you sure you want to delete this saved CV?')) {
       try {
         const result = await deleteSavedCV(cvId, user.uid);
         if (result.success) {
-          setSavedCVs(prev => prev.filter(cv => cv.id !== cvId));
+          setSavedCVs(prev => {
+            const updated = prev.filter(cv => cv.id !== cvId);
+            // Update localStorage cache with latest state
+            localStorage.setItem('dashboard_cvs', JSON.stringify(updated));
+            return updated;
+          });
           setActualCVCount(prev => Math.max(0, prev - 1));
+          
           alert('CV deleted successfully');
         } else {
           alert('Error deleting CV: ' + result.error);
@@ -115,39 +291,37 @@ function DashboardContent() {
     }
   };
 
-  // Show loading while checking auth
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
-        <NeuralNetworkBackground />
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white font-semibold">Loading Dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Return null if user not authenticated (will redirect)
-  if (!user) {
-    return null;
-  }
-
   const handleDownloadCV = async (cvId) => {
     try {
       const cv = await getCVById(cvId);
-      if (cv && cv.htmlContent) {
-        const blob = new Blob([cv.htmlContent], { type: 'text/html' });
+      if (!cv) {
+        alert('CV not found');
+        return;
+      }
+
+      // Always download as PDF
+      if (cv.pdfBase64) {
+        const byteCharacters = atob(cv.pdfBase64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${cv.title.replace(/\s+/g, '_')}_CV.html`;
+        const cleanTitle = (cv.title || 'CV').replace(/[^a-zA-Z0-9\s-_]/g, '').replace(/\s+/g, '_');
+        a.download = `${cleanTitle}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+      } else {
+        alert('PDF not available for this CV. Please regenerate it.');
       }
     } catch (error) {
+      console.error('Error downloading CV:', error);
       alert('Error downloading CV: ' + error.message);
     }
   };
@@ -178,14 +352,14 @@ function DashboardContent() {
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 pt-24 md:pt-32 pb-8 px-3 sm:px-4 relative z-0">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 pt-20 md:pt-24 pb-12 px-3 sm:px-4 relative z-0">
         <NeuralNetworkBackground />
         
         <div className="max-w-7xl mx-auto relative z-10">
           
           {/* HEADER WITH USER INFO - Mobile Optimized */}
-          <header className="mb-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <header className="mb-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
               <div className="w-full">
                 <div className="flex items-center gap-2 mb-2">
                   <h1 className="text-2xl md:text-3xl font-black text-white truncate">
@@ -203,7 +377,7 @@ function DashboardContent() {
               </div>
               
               <button 
-                onClick={loadPublicStats}
+                onClick={forceRefresh}
                 disabled={statsLoading}
                 className="flex items-center gap-1 bg-white/5 hover:bg-white/10 px-3 py-2 rounded-full border border-white/5 backdrop-blur-sm transition-all disabled:opacity-50 w-full md:w-auto justify-center md:justify-start"
               >
@@ -215,13 +389,13 @@ function DashboardContent() {
             </div>
 
             {/* QUICK STATS BAR - Mobile Optimized (2x2 grid) */}
-            <div className="grid grid-cols-2 gap-3 mb-6 md:grid-cols-4 md:gap-4">
+            <div className="grid grid-cols-2 gap-3 mb-4 md:grid-cols-4 md:gap-4">
               <div className="bg-white/5 backdrop-blur-md p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/10 hover:border-blue-500/30 transition-all cursor-pointer">
                 <div className="flex items-center justify-between mb-2">
                   <FileText className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
                   <span className="text-[9px] md:text-[10px] text-white/30 uppercase font-bold">Personal</span>
                 </div>
-                <div className="text-lg md:text-2xl font-bold text-white">{stats.totalCVs}</div>
+                <div className="text-lg md:text-2xl font-bold text-white">{actualCVCount}</div>
                 <div className="text-[10px] md:text-xs text-white/50">Saved CVs</div>
               </div>
               
@@ -246,9 +420,9 @@ function DashboardContent() {
                   <span className="text-[9px] md:text-[10px] text-white/30 uppercase font-bold">Storage</span>
                 </div>
                 <div className="text-lg md:text-2xl font-bold text-white">
-                  {stats.compressedSize > 0 ? `${(stats.compressedSize / 1024).toFixed(1)}KB` : '0KB'}
+                  {actualCVCount}
                 </div>
-                <div className="text-[10px] md:text-xs text-white/50">Compressed Size</div>
+                <div className="text-[10px] md:text-xs text-white/50">Total Saved</div>
               </div>
               
               <div 
@@ -271,13 +445,13 @@ function DashboardContent() {
           </header>
 
           {/* MAIN ACTION GRID - Mobile Optimized (stacked on mobile) */}
-          <div className="flex flex-col md:grid md:grid-cols-2 gap-4 md:gap-8 mb-8">
+          <div className="flex flex-col md:grid md:grid-cols-2 gap-3 md:gap-4 mb-4">
             
             {/* CREATE NEW CV CARD */}
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="group relative bg-gradient-to-br from-blue-900/20 to-purple-900/20 backdrop-blur-md p-5 md:p-8 rounded-2xl md:rounded-3xl border border-blue-500/20 hover:border-blue-500/50 shadow-xl md:shadow-2xl cursor-pointer transition-all duration-300 hover:-translate-y-1"
+              className="group relative bg-gradient-to-br from-blue-900/20 to-purple-900/20 backdrop-blur-md p-4 md:p-6 rounded-2xl md:rounded-3xl border border-blue-500/20 hover:border-blue-500/50 shadow-xl md:shadow-2xl cursor-pointer transition-all duration-300 hover:-translate-y-1"
               onClick={() => {
                 if (!userData?.isPro && (userData?.tokens || 0) <= 0) {
                   if (confirm('No tokens remaining. Upgrade to Pro for unlimited CV generation?')) {
@@ -328,7 +502,7 @@ function DashboardContent() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="group relative bg-black/40 backdrop-blur-md p-5 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 hover:border-white/20 shadow-xl cursor-pointer transition-all duration-300 hover:-translate-y-1"
+                className="group relative bg-black/40 backdrop-blur-md p-4 md:p-6 rounded-2xl md:rounded-3xl border border-white/5 hover:border-white/20 shadow-xl cursor-pointer transition-all duration-300 hover:-translate-y-1"
                 onClick={() => router.push('/saved')}
               >
                 <div className="relative flex flex-col h-full">
@@ -346,7 +520,7 @@ function DashboardContent() {
                   
                   <div className="flex items-center justify-between mt-auto">
                     <span className="text-xs font-bold text-white/50 flex items-center gap-2 group-hover:text-white transition-colors uppercase tracking-widest">
-                      <Database size={10} className="md:hidden" /> <span className="hidden md:inline"><Database size={12} /> </span>{savedCVs.length} Saved
+                      <Database size={10} className="md:hidden" /> <span className="hidden md:inline"><Database size={12} /> </span>{actualCVCount} Saved
                     </span>
                     <button 
                       onClick={(e) => {
@@ -365,7 +539,7 @@ function DashboardContent() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="group relative bg-gradient-to-br from-yellow-900/20 to-orange-900/20 backdrop-blur-md p-5 md:p-8 rounded-2xl md:rounded-3xl border border-yellow-500/20 hover:border-yellow-500/50 shadow-xl cursor-pointer transition-all duration-300 hover:-translate-y-1"
+                className="group relative bg-gradient-to-br from-yellow-900/20 to-orange-900/20 backdrop-blur-md p-4 md:p-6 rounded-2xl md:rounded-3xl border border-yellow-500/20 hover:border-yellow-500/50 shadow-xl cursor-pointer transition-all duration-300 hover:-translate-y-1"
                 onClick={() => setShowPricingModal(true)}
               >
                 <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl md:rounded-3xl" />
@@ -399,9 +573,9 @@ function DashboardContent() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="mb-8"
+              className="mb-4"
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg md:text-xl font-bold text-white flex items-center gap-2">
                   <Database className="w-4 h-4 md:w-5 md:h-5 text-green-400" />
                   Recent CVs
@@ -434,6 +608,40 @@ function DashboardContent() {
                         <FileText className="w-4 h-4 md:w-5 md:h-5 text-green-400" />
                       </div>
                     </div>
+
+                    <div className="relative mb-3 rounded-lg overflow-hidden border border-white/10 bg-black/30 h-32">
+                      {previewHtmls[cv.id] ? (
+                        <iframe
+                          title={`Preview of ${cv.title}`}
+                          srcDoc={previewHtmls[cv.id]}
+                          sandbox="allow-same-origin"
+                          className="pointer-events-none border-0"
+                          style={{ width: '900px', height: '1200px', transform: 'scale(0.18)', transformOrigin: 'top left' }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          {previewLoading[cv.id] ? (
+                            <div className="flex items-center gap-2 text-white/70 text-[11px] font-semibold">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Loading preview...</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                loadPreview(cv.id);
+                              }}
+                              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg transition-colors"
+                            >
+                              Load preview
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {previewErrors[cv.id] && (
+                      <p className="-mt-2 mb-2 text-[11px] text-red-200">{previewErrors[cv.id]}</p>
+                    )}
                     
                     {/* Stats Row */}
                     <div className="flex items-center justify-between text-xs text-white/50 mb-3 md:mb-4">
@@ -502,7 +710,7 @@ function DashboardContent() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="bg-white/5 backdrop-blur-md rounded-xl md:rounded-2xl border border-white/10 p-4 md:p-6 mb-6"
+            className="bg-white/5 backdrop-blur-md rounded-xl md:rounded-2xl border border-white/10 p-3 md:p-4 mb-4"
           >
             <div className="flex items-center justify-between mb-3 md:mb-4">
               <h2 className="text-base md:text-xl font-bold text-white flex items-center gap-2">
@@ -578,9 +786,9 @@ function DashboardContent() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="bg-white/5 backdrop-blur-md rounded-xl md:rounded-2xl border border-white/10 p-4 md:p-6 mb-6"
+            className="bg-white/5 backdrop-blur-md rounded-xl md:rounded-2xl border border-white/10 p-3 md:p-4 mb-4"
           >
-            <h2 className="text-base md:text-xl font-bold text-white mb-3 md:mb-4">Quick Actions</h2>
+            <h2 className="text-base md:text-xl font-bold text-white mb-2 md:mb-3">Quick Actions</h2>
             <div className="flex flex-nowrap md:flex-wrap overflow-x-auto md:overflow-visible gap-2 md:gap-3 pb-2 md:pb-0 scrollbar-hide">
               <button 
                 onClick={() => {
@@ -624,10 +832,10 @@ function DashboardContent() {
             </div>
           </motion.div>
         </div>
+        <div className="mt-10">
+          <Footer />
+        </div>
       </div>
-
-      {/* Footer */}
-      <Footer />
 
       {/* Pricing Modal */}
       {showPricingModal && <PricingModal onClose={() => setShowPricingModal(false)} />}

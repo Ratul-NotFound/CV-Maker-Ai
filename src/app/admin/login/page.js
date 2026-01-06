@@ -7,6 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, Loader2, Fingerprint, AlertTriangle } from 'lucide-react';
 import Footer from '@/components/Footer';
+import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -66,10 +67,15 @@ export default function AdminLoginPage() {
     }
   };
 
-  if (checkingAuth) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-12 h-12 text-red-600 animate-spin" /></div>;
+  if (checkingAuth) return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center">
+      <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-6 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 flex items-center justify-center p-6 relative overflow-hidden font-sans">
+      <NeuralNetworkBackground />
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 via-orange-600 to-red-600 shadow-[0_0_20px_rgba(220,38,38,0.5)]"></div>
       
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative z-10 w-full max-w-[420px]">

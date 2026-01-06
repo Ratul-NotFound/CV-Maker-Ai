@@ -9,7 +9,7 @@ export default function Footer() {
   const router = useRouter();
 
   return (
-    <footer className="relative mt-20 border-t border-white/5 bg-slate-950/50 backdrop-blur-md overflow-hidden">
+    <footer className="relative mt-20 border-t border-white/5 bg-transparent backdrop-blur-md overflow-hidden">
       {/* Decorative Background Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-ai-primary to-transparent opacity-50" />
       

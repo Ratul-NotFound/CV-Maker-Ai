@@ -11,8 +11,8 @@ import {
   ArrowRight, CheckCircle, CpuIcon, Database
 } from 'lucide-react';
 import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
-import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 export default function LoginPage() {
   const router = useRouter();

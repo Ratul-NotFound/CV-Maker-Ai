@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
+import { requireAuth, assertAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
+    const { decodedToken } = await requireAuth(request);
+    assertAdmin(decodedToken);
     const body = await request.json();
     const { userId } = body;
 
@@ -39,6 +42,12 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Upgrade error:', error);
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+    }
+    if (error.message === 'Forbidden') {
+      return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
+    }
     return NextResponse.json({ 
       success: false, 
       message: 'Upgrade failed' 

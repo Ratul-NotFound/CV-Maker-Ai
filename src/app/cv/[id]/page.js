@@ -170,12 +170,12 @@ export default function CVViewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 pt-20 sm:pt-24 md:pt-28 pb-8 sm:pb-12 px-3 sm:px-4 relative z-0">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 pt-20 md:pt-24 pb-8 px-3 sm:px-4 relative z-0">
       <NeuralNetworkBackground />
       
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
-        <div className="flex flex-col gap-4 mb-6 sm:mb-8">
+        <div className="flex flex-col gap-4 mb-6">
           <button
             onClick={() => router.push('/saved')}
             className="flex items-center gap-2 text-white/60 hover:text-white transition-colors active:scale-95 touch-manipulation w-fit"
@@ -248,7 +248,7 @@ export default function CVViewPage() {
 
         {/* CV Preview */}
         <div className="bg-white/5 backdrop-blur-md rounded-xl sm:rounded-2xl border border-white/10 p-3 sm:p-4">
-          <div className="mb-3 sm:mb-4 flex items-center justify-between">
+          <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
               <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
               <span>CV Preview</span>
@@ -265,7 +265,7 @@ export default function CVViewPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white/5 backdrop-blur-md p-6 rounded-2xl border border-white/10">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-xl flex items-center justify-center">
@@ -328,7 +328,7 @@ export default function CVViewPage() {
 
         {/* Actions */}
         <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-6">
-          <h3 className="text-xl font-bold text-white mb-4">Quick Actions</h3>
+          <h3 className="text-xl font-bold text-white mb-3">Quick Actions</h3>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => router.push('/create-cv')}

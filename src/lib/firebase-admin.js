@@ -1,5 +1,6 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 // 1. CLEAN THE KEY
 const formatPrivateKey = (key) => {
@@ -35,5 +36,6 @@ if (getApps().length === 0) {
 }
 
 const db = getApps().length > 0 ? getFirestore() : null;
+const adminAuth = getApps().length > 0 ? getAuth() : null;
 
-export { db };
+export { db, adminAuth };

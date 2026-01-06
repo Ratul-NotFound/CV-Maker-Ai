@@ -6,6 +6,11 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/context/AuthContext';
 import PricingModal from './PricingModal';
 import { saveCVForm, loadCVForm } from '@/lib/firestore';
+import ModernPreviews from './previews/ModernPreviews';
+import EuropassPreviews from './previews/EuropassPreviews';
+import ScopusPreviews from './previews/ScopusPreviews';
+import CreativePreviews from './previews/CreativePreviews';
+import ExecutivePreviews from './previews/ExecutivePreviews';
 
 const NeuralNetworkBackground = dynamic(() => import('./NeuralNetworkBackground'), {
   ssr: false
@@ -27,7 +32,8 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
       fullName: '', email: '', phone: '', professionalTitle: '', 
       linkedin: '', website: '', github: '', orcid: '', 
       address: '', city: '', country: '', postalCode: '', 
-      nationality: '', dob: '', summary: '' 
+      nationality: '', dob: '', summary: '', 
+      photoUrl: '', includePhoto: false 
     },
     experience: [], 
     education: [], 
@@ -43,6 +49,7 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [tempSkill, setTempSkill] = useState('');
   const [skillCategory, setSkillCategory] = useState('technical');
+  const [selectedTemplate, setSelectedTemplate] = useState(1);
 
   // --- CONFIG ---
   const industries = ['technology', 'finance', 'healthcare', 'education', 'marketing', 'engineering', 'law', 'creative', 'research', 'consulting'];
@@ -76,6 +83,7 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
         setFormData(prev => ({ ...prev, ...parsed.formData }));
         setCvType(parsed.cvType || 'modern');
         setIndustry(parsed.industry || 'technology');
+        setSelectedTemplate(parsed.selectedTemplate || 1);
         setCvTitle(parsed.cvTitle || 'My Professional CV');
       } catch (error) {
         console.error('Error loading saved form data:', error);
@@ -92,6 +100,7 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
         formData,
         cvType,
         industry,
+        selectedTemplate,
         cvTitle,
         lastSaved: new Date().toISOString()
       };
@@ -207,14 +216,21 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
 
     setLoading(true);
     try {
+      // Get Firebase auth token
+      const token = user ? await user.getIdToken() : null;
+      
       const response = await fetch('/api/generate-cv', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
         body: JSON.stringify({ 
           formData, 
           cvType, 
           userId: user?.uid, 
           industry,
+          templateId: selectedTemplate,
           save: saveCV && userData?.isPro,
           cvTitle: cvTitle || 'My CV',
           timestamp: new Date().toISOString()
@@ -263,7 +279,8 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
           fullName: '', email: '', phone: '', professionalTitle: '', 
           linkedin: '', website: '', github: '', orcid: '', 
           address: '', city: '', country: '', postalCode: '', 
-          nationality: '', dob: '', summary: '' 
+          nationality: '', dob: '', summary: '', 
+          photoUrl: '', includePhoto: false 
         },
         experience: [], 
         education: [], 
@@ -378,7 +395,79 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div><label className="label">LinkedIn</label><input placeholder="linkedin.com/in/username" className="input-glass" value={formData.personalInfo.linkedin} onChange={(e) => handleInputChange('personalInfo', 'linkedin', e.target.value)} /></div>
+                <div><label className="label">GitHub Username</label><input placeholder="github.com/username" className="input-glass" value={formData.personalInfo.github} onChange={(e) => handleInputChange('personalInfo', 'github', e.target.value)} /></div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
                 <div><label className="label">Portfolio / Website</label><input placeholder="https://yourportfolio.com" className="input-glass" value={formData.personalInfo.website} onChange={(e) => handleInputChange('personalInfo', 'website', e.target.value)} /></div>
+                <div><label className="label">ORCID / Research ID</label><input placeholder="For Scopus CVs" className="input-glass" value={formData.personalInfo.orcid} onChange={(e) => handleInputChange('personalInfo', 'orcid', e.target.value)} /></div>
+              </div>
+
+              {/* Photo Upload Section with Live Preview */}
+              <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                <h4 className="text-lg font-bold text-white mb-4">📸 Profile Photo (Optional)</h4>
+                
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="label">Photo URL</label>
+                      <input 
+                        placeholder="https://example.com/photo.jpg or imgur.com/..." 
+                        className="input-glass w-full" 
+                        value={formData.personalInfo.photoUrl} 
+                        onChange={(e) => handleInputChange('personalInfo', 'photoUrl', e.target.value)} 
+                      />
+                      <p className="text-xs text-white/40 mt-2">Paste a direct image URL (jpg, png, webp)</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+                      <input 
+                        type="checkbox" 
+                        id="includePhoto" 
+                        checked={formData.personalInfo.includePhoto} 
+                        onChange={(e) => handleInputChange('personalInfo', 'includePhoto', e.target.checked)}
+                        className="w-5 h-5 rounded border-white/20 bg-white/5 text-ai-primary focus:ring-ai-primary focus:ring-offset-0"
+                      />
+                      <label htmlFor="includePhoto" className="label cursor-pointer mb-0 text-sm">
+                        Include photo in CV
+                      </label>
+                    </div>
+                  </div>
+                  
+                  {/* Live Photo Preview */}
+                  <div className="flex items-center justify-center">
+                    {formData.personalInfo.photoUrl ? (
+                      <div className="text-center">
+                        <div className="relative inline-block">
+                          <img 
+                            src={formData.personalInfo.photoUrl} 
+                            alt="Profile Preview" 
+                            className="w-32 h-32 rounded-full object-cover border-4 border-ai-primary/30 shadow-lg"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="128" height="128"%3E%3Crect fill="%23374151" width="128" height="128"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23fff" font-size="16"%3EInvalid URL%3C/text%3E%3C/svg%3E';
+                            }}
+                          />
+                          {formData.personalInfo.includePhoto && (
+                            <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-bold">
+                              ✓ Active
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-white/60 mt-3">Live Preview</p>
+                      </div>
+                    ) : (
+                      <div className="w-32 h-32 rounded-full bg-white/5 border-2 border-dashed border-white/20 flex items-center justify-center">
+                        <div className="text-center text-white/30">
+                          <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          <p className="text-xs">No photo</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
               
               <div>
@@ -525,6 +614,7 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
                       <input placeholder="Project Name" className="input-glass font-bold" value={p.name} onChange={(e) => handleInputChange('projects', 'name', e.target.value, i)} />
                       <input placeholder="Link URL" className="input-glass" value={p.link} onChange={(e) => handleInputChange('projects', 'link', e.target.value, i)} />
                     </div>
+                    <input placeholder="Technologies (e.g. React, Node.js, MongoDB)" className="input-glass w-full mb-3" value={p.technologies} onChange={(e) => handleInputChange('projects', 'technologies', e.target.value, i)} />
                     <textarea placeholder="Brief description of the project and technologies used..." className="input-glass h-24 w-full" value={p.description} onChange={(e) => handleInputChange('projects', 'description', e.target.value, i)} />
                   </div>
                 ))}
@@ -603,6 +693,47 @@ const CVForm = ({ onCVGenerated, onSaveCV, onUpgradeNeeded }) => {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Template Previews Section */}
+              <div className="mb-12">
+                <h4 className="text-2xl font-bold text-white mb-6 text-center">Choose Your Template</h4>
+                <div className="bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-sm">
+                  {cvType === 'modern' && (
+                    <ModernPreviews 
+                      selectedTemplate={selectedTemplate}
+                      onSelectTemplate={setSelectedTemplate}
+                      industry={industry}
+                    />
+                  )}
+                  {cvType === 'europass' && (
+                    <EuropassPreviews 
+                      selectedTemplate={selectedTemplate}
+                      onSelectTemplate={setSelectedTemplate}
+                    />
+                  )}
+                  {cvType === 'scopus' && (
+                    <ScopusPreviews 
+                      selectedTemplate={selectedTemplate}
+                      onSelectTemplate={setSelectedTemplate}
+                    />
+                  )}
+                  {cvType === 'creative' && (
+                    <CreativePreviews 
+                      selectedTemplate={selectedTemplate}
+                      onSelectTemplate={setSelectedTemplate}
+                    />
+                  )}
+                  {cvType === 'executive' && (
+                    <ExecutivePreviews 
+                      selectedTemplate={selectedTemplate}
+                      onSelectTemplate={setSelectedTemplate}
+                    />
+                  )}
+                </div>
+                <p className="text-white/40 text-sm mt-4 text-center">
+                  Selected: Template #{selectedTemplate}
+                </p>
               </div>
 
               {/* CV Title Input */}

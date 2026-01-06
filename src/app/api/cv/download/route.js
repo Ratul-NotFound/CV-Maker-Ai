@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin';
 import { decompressCV } from '@/lib/firestore';
+import { decompressPDF, generatePDF } from '@/lib/pdf-generator';
+import { requireAuth, assertSameUserOrAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
+    const { decodedToken } = await requireAuth(request);
     const { searchParams } = new URL(request.url);
     const cvId = searchParams.get('cvId');
+    const format = searchParams.get('format') || 'html'; // 'html' or 'pdf'
 
     if (!cvId) {
       return NextResponse.json({ 
@@ -27,7 +31,63 @@ export async function GET(request) {
     }
 
     const cvData = cvDoc.data();
+    assertSameUserOrAdmin(decodedToken, cvData.userId);
     
+    // Handle PDF download (generate on the fly if missing)
+    if (format === 'pdf') {
+      try {
+        let pdfBuffer = null;
+
+        if (cvData.compressedPdf) {
+          pdfBuffer = decompressPDF(Buffer.from(cvData.compressedPdf, 'base64'));
+        } else if (cvData.pdfBase64) {
+          const base64 = (cvData.pdfBase64 || '').replace(/^data:application\/pdf;base64,/, '');
+          pdfBuffer = Buffer.from(base64, 'base64');
+        } else {
+          // Generate PDF from stored HTML
+          let htmlContent = cvData.compressedHtml || cvData.htmlContent || '';
+          if (htmlContent && !htmlContent.startsWith('<!DOCTYPE')) {
+            try {
+              htmlContent = decompressCV(htmlContent);
+            } catch (decompressError) {
+              console.error('Decompression failed while generating PDF:', decompressError);
+              htmlContent = cvData.htmlContent || '';
+            }
+          }
+
+          if (!htmlContent) {
+            return NextResponse.json({ success: false, error: 'PDF not available for this CV' }, { status: 404 });
+          }
+
+          pdfBuffer = await generatePDF(htmlContent, cvData.title || 'CV');
+          const pdfBase64 = pdfBuffer.toString('base64');
+          // Persist PDF for future downloads (best-effort)
+          cvDoc.ref.update({ pdfBase64 }).catch(() => {});
+        }
+
+        cvDoc.ref.update({
+          lastAccessed: new Date().toISOString(),
+          downloadCount: (cvData.downloadCount || 0) + 1
+        }).catch(() => {});
+
+        return new Response(pdfBuffer, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${cvData.title || 'CV'}.pdf"`,
+            'Content-Length': pdfBuffer.length.toString(),
+          },
+        });
+      } catch (error) {
+        console.error('Error processing PDF:', error);
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Failed to process PDF' 
+        }, { status: 500 });
+      }
+    }
+    
+    // Handle HTML download (original code)
     // Decompress HTML if it's compressed
     let htmlContent = cvData.compressedHtml || cvData.htmlContent || '';
     if (htmlContent && !htmlContent.startsWith('<!DOCTYPE')) {
@@ -62,6 +122,12 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Error downloading CV:', error);
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error.message === 'Forbidden') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+    }
     return NextResponse.json({
       success: false,
       error: 'Failed to download CV'

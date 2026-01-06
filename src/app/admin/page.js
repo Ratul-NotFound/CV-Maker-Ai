@@ -29,6 +29,7 @@ import {
   Minus
 } from "lucide-react";
 import Footer from '@/components/Footer';
+import NeuralNetworkBackground from '@/components/NeuralNetworkBackground';
 import { motion } from "framer-motion";
 
 export default function AdminPage() {
@@ -59,9 +60,11 @@ export default function AdminPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const idToken = await user.getIdToken();
+      const authHeader = { Authorization: `Bearer ${idToken}` };
       const [usersRes, upgradeRes] = await Promise.all([
-        fetch('/api/admin/users'),
-        fetch('/api/admin/upgrade-requests')
+        fetch('/api/admin/users', { headers: authHeader }),
+        fetch('/api/admin/upgrade-requests', { headers: authHeader })
       ]);
       
       const usersData = await usersRes.json();
@@ -80,9 +83,10 @@ export default function AdminPage() {
   const handleAddTokens = async (userId, amount) => {
     setProcessing(userId);
     try {
+      const idToken = await user.getIdToken();
       await fetch('/api/admin/users', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ userId, action: 'add_tokens', amount })
       });
       fetchData();
@@ -95,9 +99,10 @@ export default function AdminPage() {
   const handleGrantPro = async (userId) => {
     setProcessing(userId);
     try {
+      const idToken = await user.getIdToken();
       await fetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ 
           userId, 
           updates: { isPro: true, tokens: 999999, proSince: new Date().toISOString() } 
@@ -116,9 +121,10 @@ export default function AdminPage() {
     
     setProcessing(requestId);
     try {
+      const idToken = await user.getIdToken();
       const response = await fetch('/api/admin/upgrade-requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ 
           requestId, 
           userId,
@@ -147,9 +153,10 @@ export default function AdminPage() {
     
     setProcessing(requestId);
     try {
+      const idToken = await user.getIdToken();
       const response = await fetch('/api/admin/upgrade-requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ 
           requestId, 
           action: 'reject',
@@ -183,9 +190,10 @@ export default function AdminPage() {
 
   const handleSaveUser = async (userId) => {
     try {
+      const idToken = await user.getIdToken();
       await fetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ 
           userId, 
           updates: { 
@@ -299,9 +307,10 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-950 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 text-white relative z-0">
+      <NeuralNetworkBackground />
       <Navbar />
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-10 pt-24">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 pt-20">
         
         <div className="mb-10">
           <h1 className="text-4xl font-black mb-2 flex items-center gap-3">
