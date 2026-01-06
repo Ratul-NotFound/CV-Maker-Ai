@@ -7,6 +7,7 @@ import { getTemplate, getMeta, listArchetypes } from './templates/registry';
 import { INDUSTRY_PALETTES } from './templates/palette';
 import { requireAuth, assertSameUserOrAdmin } from '@/lib/auth';
 
+// ✅ Template-based CV generation (No AI dependency)
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
